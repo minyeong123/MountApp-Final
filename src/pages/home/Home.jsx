@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
     View, Text, ScrollView, Image, TouchableOpacity,
-    SafeAreaView, ActivityIndicator, Dimensions, StyleSheet
+    SafeAreaView, ActivityIndicator
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Siren, Search, MessageCircleMore } from "lucide-react-native";
@@ -31,27 +31,27 @@ export default function Home() {
     }, []);
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView style={styles.scrollView}>
+        <SafeAreaView className="flex-1 bg-white">
+            <ScrollView className="flex-1 px-4">
                 {/* 헤더 */}
-                <View style={styles.header}>
-                    <View style={styles.logoArea}>
-                        <Image source={logo} style={styles.logoImage} resizeMode="contain" />
-                        <Text style={styles.headerTitle}>MountApp</Text>
+                <View className="flex-row justify-between items-center py-4">
+                    <View className="flex-row items-center">
+                        <Image source={logo} className="w-9 h-9 rounded-full" resizeMode="contain" />
+                        <Text className="text-xl font-black text-[#15803d] ml-2">MountApp</Text>
                     </View>
-                    <View style={styles.iconArea}>
+                    <View className="flex-row">
                         <TouchableOpacity onPress={() => router.push("/search")}>
                             <Search size={24} color="black" />
                         </TouchableOpacity>
-                        <TouchableOpacity style={{ marginLeft: 15 }} onPress={() => router.push("/chat")}>
+                        <TouchableOpacity className="ml-4" onPress={() => router.push("/chat")}>
                             <MessageCircleMore size={24} color="black" />
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* 산악 가이드 - 클릭 이벤트 추가됨 */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>산악 가이드 정보</Text>
+                {/* 산악 가이드 */}
+                <View className="mb-6">
+                    <Text className="text-lg font-bold mb-2 pb-1 border-b border-gray-100">산악 가이드 정보</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {loading ? (
                             <ActivityIndicator size="large" color="#15803d" />
@@ -59,15 +59,15 @@ export default function Home() {
                             mountains.map((mt) => (
                                 <TouchableOpacity
                                     key={mt.id}
-                                    style={styles.card}
+                                    className="w-[220px] mr-4 bg-white rounded-2xl border border-gray-200 overflow-hidden"
                                     onPress={() => router.push(`/mountain/${mt.id}`)}
                                 >
-                                    <View style={styles.cardImagePlaceholder}>
-                                        <Image source={logo} style={styles.cardLogoSmall} resizeMode="contain" />
+                                    <View className="h-[100px] bg-gray-50 items-center justify-center">
+                                        <Image source={logo} className="w-10 h-10 opacity-20" resizeMode="contain" />
                                     </View>
-                                    <View style={styles.cardContent}>
-                                        <Text style={styles.cardTitle}>{mt.name}</Text>
-                                        <Text style={styles.cardDesc} numberOfLines={2}>{mt.description}</Text>
+                                    <View className="p-3">
+                                        <Text className="text-base font-bold mb-1">{mt.name}</Text>
+                                        <Text className="text-sm text-gray-500" numberOfLines={2}>{mt.description}</Text>
                                     </View>
                                 </TouchableOpacity>
                             ))
@@ -76,47 +76,23 @@ export default function Home() {
                 </View>
 
                 {/* 재난 알림 */}
-                <View style={styles.section}>
-                    <View style={styles.alertHeader}>
+                <View className="mb-6">
+                    <View className="flex-row items-center mb-2">
                         <Siren size={20} color="#b91c1c" />
-                        <Text style={styles.alertTitle}>실시간 재난 알림</Text>
+                        <Text className="text-lg font-bold text-[#b91c1c] ml-1.5">실시간 재난 알림</Text>
                     </View>
-                    <View style={styles.alertBox}>
+                    <View className="bg-[#fef2f2] p-4 rounded-2xl border border-[#fee2e2]">
                         <DisasterBanner alerts={disasterAlerts} />
                     </View>
                 </View>
 
                 {/* 유의사항 */}
-                <View style={styles.noticeBox}>
-                    <Text style={styles.noticeTitle}>☑️ 유의사항</Text>
-                    <Text style={styles.noticeText}>• 등산 전 반드시 기상청 정보를 확인하세요.</Text>
-                    <Text style={styles.noticeText}>• 비상 상황 발생 시 즉시 119에 신고하세요.</Text>
+                <View className="bg-gray-100 p-5 rounded-2xl border-l-4 border-gray-400 mb-8">
+                    <Text className="text-base font-bold mb-2">☑️ 유의사항</Text>
+                    <Text className="text-sm text-gray-600 mb-1">• 등산 전 반드시 기상청 정보를 확인하세요.</Text>
+                    <Text className="text-sm text-gray-600">• 비상 상황 발생 시 즉시 119에 신고하세요.</Text>
                 </View>
             </ScrollView>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: 'white' },
-    scrollView: { flex: 1, paddingHorizontal: 16 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15 },
-    logoArea: { flexDirection: 'row', alignItems: 'center' },
-    logoImage: { width: 35, height: 35, borderRadius: 20 },
-    headerTitle: { fontSize: 20, fontWeight: '900', color: '#15803d', marginLeft: 8 },
-    iconArea: { flexDirection: 'row' },
-    section: { marginBottom: 25 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingBottom: 5 },
-    card: { width: 220, marginRight: 15, backgroundColor: 'white', borderRadius: 15, borderWidth: 1, borderColor: '#eee', overflow: 'hidden' },
-    cardImagePlaceholder: { height: 100, backgroundColor: '#f9f9f9', alignItems: 'center', justifyContent: 'center' },
-    cardLogoSmall: { width: 40, height: 40, opacity: 0.2 },
-    cardContent: { padding: 12 },
-    cardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-    cardDesc: { fontSize: 13, color: '#666' },
-    alertHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-    alertTitle: { fontSize: 18, fontWeight: 'bold', color: '#b91c1c', marginLeft: 6 },
-    alertBox: { backgroundColor: '#fef2f2', padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#fee2e2' },
-    noticeBox: { backgroundColor: '#f3f4f6', padding: 20, borderRadius: 15, borderLeftWidth: 4, borderLeftColor: '#9ca3af', marginBottom: 30 },
-    noticeTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-    noticeText: { fontSize: 13, color: '#4b5563', marginBottom: 4 }
-});

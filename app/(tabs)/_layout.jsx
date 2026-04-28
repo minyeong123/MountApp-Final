@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import { Text, StyleSheet, Platform } from "react-native";
 // 캡처 화면의 아이콘들과 가장 유사한 Lucide 아이콘들입니다.
 import { House, Map, UserSearch, MessageSquareText, CircleUserRound } from "lucide-react-native";
-
+import "../../global.css";
 export default function TabLayout() {
     return (
         <Tabs
@@ -23,7 +23,7 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="explore"
+                name="map"
                 options={{
                     title: "지도",
                     tabBarIcon: ({ color }) => <Map size={24} color={color} />,
