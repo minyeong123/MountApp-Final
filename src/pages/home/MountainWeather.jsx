@@ -1,22 +1,25 @@
-    import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { View, Text, Image, ScrollView, StyleSheet, ActivityIndicator } from "react-native";
 import axios from "axios";
-    import { Sunrise, Sunset } from "lucide-react-native";
+import { Sunrise, Sunset } from "lucide-react-native";
+
 const API_KEY = "7435802c8b57480c8b263a61cbecb98c";
 
+// 🔥 모바일 앱에서 에러가 나지 않는 안전한 날짜/시간 포맷 함수
 const formatDailyDate = (timestamp) => {
-  return new Date(timestamp * 1000).toLocaleDateString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-  });
+  const date = new Date(timestamp * 1000);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const weekday = weekdays[date.getDay()];
+  return `${month}.${day} (${weekday})`;
 };
 
 const formatTime = (timestamp) => {
-  return new Date(timestamp * 1000).toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const date = new Date(timestamp * 1000);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 };
 
 export default function MountainWeather({ mountain }) {
@@ -32,7 +35,12 @@ export default function MountainWeather({ mountain }) {
       setError(null);
 
       try {
-        const url = `/weather-api/data/3.0/onecall?lat=${mountain.lat}&lon=${mountain.lon}&exclude=minutely,hourly,alerts&units=metric&lang=kr&appid=${API_KEY}`;
+        // 🔥 웹 프록시(/weather-api) 대신 실제 API 전체 주소 명시
+        // 산 데이터에 위도경도가 없을 경우 서울을 기본값으로 설정
+        const lat = mountain.lat || mountain.latitude || 37.5665;
+        const lon = mountain.lon || mountain.longitude || 126.9780;
+        
+        const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=metric&lang=kr&appid=${API_KEY}`;
         const response = await axios.get(url);
         setData(response.data);
       } catch (err) {
@@ -45,80 +53,94 @@ export default function MountainWeather({ mountain }) {
     fetchWeather();
   }, [mountain]); 
 
-  if (loading) return <p className="p-4 text-center">날씨 정보를 불러오는 중...</p>;
-  if (error) return <p className="p-4 text-center text-red-600">오류: {error}</p>;
+  if (loading) return <ActivityIndicator size="large" color="#3b82f6" style={{ marginVertical: 40 }} />;
+  if (error) return <Text style={styles.errorText}>오류: {error}</Text>;
   if (!data) return null;
 
-  const currentDateFormatted = new Date(data.current.dt * 1000).toLocaleDateString("ko-KR", {
-    year: "2-digit",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  const currentDate = new Date(data.current.dt * 1000);
+  const currentDateFormatted = `${String(currentDate.getFullYear()).slice(2)}.${String(currentDate.getMonth() + 1).padStart(2, '0')}.${String(currentDate.getDate()).padStart(2, '0')}`;
 
   return (
-    <div className="max-w-xl mx-auto bg-gray-50 p-5 rounded-lg shadow-lg space-y-4">
-      <div className="flex justify-between items-center pb-2 border-b">
-        <h3 className="text-xl font-bold text-gray-800">⛰️ {mountain.name} 날씨</h3>
-        <p className="text-xs text-gray-500">데이터출처: Openweather</p>
-      </div>
+    <View style={styles.container}>
+      {/* 헤더 */}
+      <View style={styles.header}>
+        <Text style={styles.title}>⛰️ {mountain.name} 날씨</Text>
+        <Text style={styles.subtitle}>데이터출처: Openweather</Text>
+      </View>
 
-      <div className="overflow-x-auto pb-2">
-        <div className="flex flex-row gap-2">
+      {/* 일별 날씨 가로 스크롤 */}
+      <View style={styles.scrollContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {data.daily.map((day, idx) => (
-            <div
-              key={idx}
-              className="flex-shrink-0 w-32 flex flex-col items-center p-2 bg-white rounded-lg shadow-sm"
-            >
-              <div className="text-sm font-semibold text-gray-700 mb-1">
-                {formatDailyDate(day.dt)}
-              </div>
+            <View key={idx} style={styles.dayCard}>
+              <Text style={styles.dateText}>{formatDailyDate(day.dt)}</Text>
               
-              <div className="my-1">
-                <img
-                  src={`https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`}
-                  alt={day.weather[0].description}
-                  title={day.weather[0].description}
-                  className="w-12 h-12"
-                />
-              </div>
+              <Image
+                source={{ uri: `https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png` }}
+                style={styles.weatherIcon}
+                resizeMode="contain"
+              />
               
-              <div className="text-base font-medium mb-1">
-                <span className="text-blue-600">{Math.round(day.temp.min)}°</span>
-                <span className="text-gray-400"> / </span>
-                <span className="text-red-600">{Math.round(day.temp.max)}°</span>
-              </div>
+              <View style={styles.tempRow}>
+                <Text style={styles.tempMin}>{Math.round(day.temp.min)}°</Text>
+                <Text style={styles.tempDivider}> / </Text>
+                <Text style={styles.tempMax}>{Math.round(day.temp.max)}°</Text>
+              </View>
               
-              <div className="text-xs text-gray-600">
-                풍속 {day.wind_speed.toFixed(1)}m/s
-              </div>
-            </div>
+              <Text style={styles.windText}>풍속 {day.wind_speed.toFixed(1)}m/s</Text>
+            </View>
           ))}
-        </div>
-      </div>
+        </ScrollView>
+      </View>
 
-      <div className="p-4 bg-white rounded-lg shadow-md flex justify-around items-center">
-        <div className="text-center flex items-center space-x-5">
-             <Sunrise />
-          <div>
-            <span className=" font-bold text-sm text-gray-700">일출</span>
-            <div className="font-bold text-sm text-gray-800">{formatTime(data.current.sunrise)}</div>
-          </div>
-        </div>
+      {/* 일출 / 일몰 정보 */}
+      <View style={styles.sunContainer}>
+        <View style={styles.sunItem}>
+          <Sunrise color="#f97316" size={28} />
+          <View style={styles.sunTextCol}>
+            <Text style={styles.sunLabel}>일출</Text>
+            <Text style={styles.sunTime}>{formatTime(data.current.sunrise)}</Text>
+          </View>
+        </View>
         
-        <div className="border-l border-gray-300 h-10"></div>
+        <View style={styles.divider} />
         
-        <div className="text-center flex items-center space-x-5">
-              <Sunset />
-          <div>
-            <span className="font-bold text-sm text-gray-700">일몰</span>
-            <div className="font-bold text-sm text-gray-800">{formatTime(data.current.sunset)}</div>
-          </div>
-        </div>
-      </div>
+        <View style={styles.sunItem}>
+          <Sunset color="#6366f1" size={28} />
+          <View style={styles.sunTextCol}>
+            <Text style={styles.sunLabel}>일몰</Text>
+            <Text style={styles.sunTime}>{formatTime(data.current.sunset)}</Text>
+          </View>
+        </View>
+      </View>
           
-      <p className="text-sm text-gray-500 text-right">
-        일출/일몰 기준일: {currentDateFormatted}
-      </p>
-    </div>
+      <Text style={styles.footerText}>일출/일몰 기준일: {currentDateFormatted}</Text>
+    </View>
   );
 }
+
+// 🔥 기존 Tailwind CSS 디자인을 완벽히 재현한 StyleSheet
+const styles = StyleSheet.create({
+    container: { backgroundColor: '#f9fafb', padding: 20, borderRadius: 12, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, gap: 16, marginVertical: 10, marginHorizontal: 2 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+    title: { fontSize: 18, fontWeight: 'bold', color: '#1f2937' },
+    subtitle: { fontSize: 11, color: '#6b7280' },
+    scrollContainer: { paddingBottom: 4 },
+    scrollContent: { gap: 8, paddingRight: 10 },
+    dayCard: { width: 110, alignItems: 'center', padding: 12, backgroundColor: 'white', borderRadius: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, marginRight: 8 },
+    dateText: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 4 },
+    weatherIcon: { width: 50, height: 50, marginVertical: 4 },
+    tempRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    tempMin: { fontSize: 15, fontWeight: '700', color: '#2563eb' },
+    tempDivider: { fontSize: 14, fontWeight: '500', color: '#9ca3af' },
+    tempMax: { fontSize: 15, fontWeight: '700', color: '#dc2626' },
+    windText: { fontSize: 11, color: '#4b5563' },
+    sunContainer: { padding: 16, backgroundColor: 'white', borderRadius: 12, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+    sunItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    sunTextCol: { flexDirection: 'column' },
+    sunLabel: { fontSize: 13, fontWeight: 'bold', color: '#374151' },
+    sunTime: { fontSize: 15, fontWeight: '800', color: '#1f2937' },
+    divider: { borderLeftWidth: 1, borderLeftColor: '#d1d5db', height: 40 },
+    footerText: { fontSize: 12, color: '#6b7280', textAlign: 'right' },
+    errorText: { padding: 20, textAlign: 'center', color: '#dc2626', fontWeight: 'bold' }
+});
