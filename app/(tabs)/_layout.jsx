@@ -15,7 +15,7 @@ export default function TabLayout() {
             }}
         >
             <Tabs.Screen
-                name="index"
+                name="home"
                 options={{
                     title: "홈",
                     tabBarIcon: ({ color }) => <House size={24} color={color} />,
@@ -49,13 +49,15 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="profile"
+                name="mypage"
                 options={{
                     title: "마이페이지",
                     tabBarIcon: ({ color }) => <CircleUserRound size={24} color={color} />,
                     tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>마이페이지</Text>,
                 }}
             />
+            />
+
         </Tabs>
     );
 }

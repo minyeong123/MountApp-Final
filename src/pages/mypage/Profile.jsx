@@ -1,23 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Platform } from 'react-native';
-import { Camera, User, CheckCircle, XCircle, Loader2, ChevronRight, ChevronLeft } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, SafeAreaView } from 'react-native';
+import { Camera, User, CheckCircle, XCircle, ChevronRight, ChevronLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import axios from 'axios';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// 닉네임 중복 확인 모의 함수
-async function checkNicknameAPI(nickname) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const takenNames = ["admin", "test", "manager"];
-            resolve(!takenNames.includes(nickname.toLowerCase()));
-        }, 600);
-    });
+// API 함수 (컴포넌트 외부 유지)
+async function checkNicknameAPI(nickname, url) {
+    try {
+        const res = await axios.get(`${url}/api/auth/check-nickname?nickname=${nickname}`);
+        return res.data.available;
+    } catch (err) {
+        const takenNames = ["admin", "test", "manager"];
+        return !takenNames.includes(nickname.toLowerCase());
+    }
 }
 
 export default function Profile() {
-    const navigation = useNavigation();
-
-    // --- 상태 관리 ---
+    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [nickname, setNickname] = useState("");
@@ -25,16 +25,20 @@ export default function Profile() {
     const [checking, setChecking] = useState(false);
     const [checkResult, setCheckResult] = useState(null);
 
-    const BACKEND_URL = Platform.OS === 'android' ? "http://10.0.2.2:8080" : "http://localhost:8080";
+    const BACKEND_URL = "http://10.0.2.2:8082";
 
     useEffect(() => {
         fetchUserData();
     }, []);
 
     const fetchUserData = async () => {
-        // 실제로는 AsyncStorage 등에서 토큰을 가져와야 합니다.
-        const token = "YOUR_JWT_TOKEN";
         try {
+            const token = await AsyncStorage.getItem("jwtToken");
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
             const res = await axios.get(`${BACKEND_URL}/api/auth/me`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -42,65 +46,61 @@ export default function Profile() {
             setUser(userData);
             setNickname(userData.nickname || "");
             if (userData.profileImage) {
-                setAvatarPreview(`${BACKEND_URL}${userData.profileImage}`);
+                // 이미지 경로가 절대경로인지 확인 필요
+                setAvatarPreview(userData.profileImage.startsWith('http')
+                    ? userData.profileImage
+                    : `${BACKEND_URL}${userData.profileImage}`);
             }
         } catch (err) {
-            Alert.alert("에러", "회원 정보를 불러오지 못했습니다.");
-            navigation.goBack();
+            console.error("데이터 로드 에러:", err);
+            Alert.alert("오류", "사용자 정보를 불러올 수 없습니다.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleCheckNickname = async () => {
-        if (!nickname.trim()) {
-            Alert.alert("알림", "활동명을 입력하세요.");
-            return;
-        }
+        if (!nickname.trim()) return;
         setChecking(true);
-        const result = await checkNicknameAPI(nickname.trim());
+        const result = await checkNicknameAPI(nickname.trim(), BACKEND_URL);
         setChecking(false);
         setCheckResult(result);
     };
 
     const handleConfirm = async () => {
-        if (!nickname.trim()) {
-            Alert.alert("알림", "활동명을 입력해 주세요.");
-            return;
+        try {
+            const token = await AsyncStorage.getItem("jwtToken");
+            await axios.put(`${BACKEND_URL}/api/auth/profile`, { nickname }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            Alert.alert("성공", "프로필이 수정되었습니다.", [
+                { text: "확인", onPress: () => router.back() }
+            ]);
+        } catch (err) {
+            Alert.alert("실패", "수정 중 오류가 발생했습니다.");
         }
-        if (user && nickname !== user.nickname && checkResult !== true) {
-            Alert.alert("알림", "활동명 중복 확인이 필요합니다.");
-            return;
-        }
-
-        // 실제 전송 로직 (FormData 구성 등)
-        Alert.alert("성공", "프로필이 수정되었습니다.");
-        navigation.goBack();
     };
 
     if (loading) return (
-        <View className="flex-1 justify-center items-center bg-white">
-            <ActivityIndicator size="large" color="#000" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#15803d" />
         </View>
     );
 
     return (
-        <View className="flex-1 bg-white">
-            {/* Header */}
-            <View className="flex-row items-center h-14 px-4 pt-10 border-b border-gray-100">
-                <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
+        <SafeAreaView className="flex-1 bg-white">
+            {/* 상단 헤더 */}
+            <View className="flex-row items-center h-14 px-4 border-b border-gray-100">
+                <TouchableOpacity onPress={() => router.back()} className="p-2">
                     <ChevronLeft size={24} color="#1A1A1A" />
                 </TouchableOpacity>
                 <Text className="flex-1 text-center font-bold text-lg text-gray-900 mr-10">프로필 수정</Text>
             </View>
 
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-                {/* Profile Image Section */}
+            <ScrollView className="flex-1">
+                {/* 아바타 섹션 */}
                 <View className="items-center py-8">
-                    <TouchableOpacity
-                        onPress={() => Alert.alert("이미지 선택", "갤러리에서 사진을 선택합니다.")}
-                        className="relative"
-                    >
+                    <View className="relative">
                         <View className="w-28 h-28 rounded-full bg-gray-50 overflow-hidden border border-gray-200 items-center justify-center shadow-sm">
                             {avatarPreview ? (
                                 <Image source={{ uri: avatarPreview }} className="w-full h-full" />
@@ -108,73 +108,64 @@ export default function Profile() {
                                 <User size={48} color="#D1D5DB" />
                             )}
                         </View>
-                        <View className="absolute bottom-0 right-0 p-2 bg-white rounded-full border border-gray-200 shadow-md">
+                        <TouchableOpacity className="absolute bottom-0 right-0 p-2 bg-white rounded-full border border-gray-200 shadow-md">
                             <Camera size={20} color="#4B5563" />
-                        </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                {/* Nickname Section */}
-                <View className="px-5 space-y-3">
-                    <Text className="text-sm font-bold text-gray-700">
-                        활동명 <Text className="text-orange-500">*</Text>
-                    </Text>
-
+                {/* 닉네임 입력 섹션 */}
+                <View className="px-5">
+                    <Text className="text-sm font-bold text-gray-700 mb-2">활동명 <Text className="text-orange-500">*</Text></Text>
                     <View className="flex-row gap-2">
                         <View className="flex-1 relative justify-center">
                             <TextInput
                                 value={nickname}
-                                onChangeText={(text) => {
-                                    setNickname(text);
-                                    setCheckResult(null);
-                                }}
-                                placeholder="활동명을 입력하세요"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 pr-10"
+                                onChangeText={(text) => { setNickname(text); setCheckResult(null); }}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-300"
+                                placeholder="닉네임을 입력하세요"
                             />
                             <View className="absolute right-3">
-                                {checkResult === true && <CheckCircle size={20} color="#10B981" />}
-                                {checkResult === false && <XCircle size={20} color="#EF4444" />}
+                                {checking ? <ActivityIndicator size="small" color="#6366f1" /> : (
+                                    <>
+                                        {checkResult === true && <CheckCircle size={20} color="#10B981" />}
+                                        {checkResult === false && <XCircle size={20} color="#EF4444" />}
+                                    </>
+                                )}
                             </View>
                         </View>
-
                         <TouchableOpacity
                             onPress={handleCheckNickname}
-                            disabled={!nickname || (user && nickname === user.nickname)}
-                            className={`px-4 py-3 rounded-xl justify-center items-center min-w-[90px] ${
-                                (!nickname || (user && nickname === user.nickname)) ? "bg-gray-200" : "bg-blue-600"
-                            }`}
+                            disabled={!nickname.trim() || checking}
+                            className={`px-4 py-3 rounded-xl justify-center ${!nickname ? "bg-gray-200" : "bg-blue-600"}`}
                         >
-                            {checking ? (
-                                <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                                <Text className={`font-bold ${(!nickname || (user && nickname === user.nickname)) ? "text-gray-400" : "text-white"}`}>
-                                    중복확인
-                                </Text>
-                            )}
+                            <Text className="text-white font-bold">중복확인</Text>
                         </TouchableOpacity>
                     </View>
-
-                    {checkResult === true && <Text className="text-sm text-green-600 font-medium">사용 가능한 활동명입니다.</Text>}
-                    {checkResult === false && <Text className="text-sm text-red-600 font-medium">이미 사용 중인 활동명입니다.</Text>}
                 </View>
 
                 <View className="h-3 bg-gray-50 my-8" />
 
-                {/* Info Section */}
+                {/* 상세 정보 섹션 */}
                 <View className="px-5">
                     <View className="flex-row justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-900">내 정보</h3>
-                        <TouchableOpacity onPress={() => navigation.navigate('ChangeInfo')} className="flex-row items-center">
+                        <Text className="text-lg font-bold text-gray-900">내 정보</Text>
+                        <TouchableOpacity
+                            onPress={() => router.push('/profilechange')}
+                            className="flex-row items-center"
+                        >
                             <Text className="text-sm text-gray-400 mr-1">수정하기</Text>
                             <ChevronRight size={16} color="#D1D5DB" />
                         </TouchableOpacity>
                     </View>
 
-                    <View className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-sm">
+                    <View className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
                         <InfoRow label="이름" value={user?.name} />
+                        <View className="h-[1px] bg-gray-100 my-3" />
                         <InfoRow label="생년월일" value={user?.birthdate} />
-                        <InfoRow label="성별" value={user?.gender === "MALE" ? "남성" : user?.gender === "FEMALE" ? "여성" : "-"} />
+                        <View className="h-[1px] bg-gray-100 my-3" />
                         <InfoRow label="전화번호" value={user?.phone} />
+                        <View className="h-[1px] bg-gray-100 my-3" />
                         <InfoRow label="이메일" value={user?.email} />
                     </View>
                 </View>
@@ -182,19 +173,21 @@ export default function Profile() {
                 <View className="h-20" />
             </ScrollView>
 
-            {/* Bottom Button */}
-            <View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100">
+            {/* 하단 확인 버튼 */}
+            <View className="p-4 bg-white border-t border-gray-100">
                 <TouchableOpacity
                     onPress={handleConfirm}
-                    className="w-full py-4 bg-slate-900 rounded-xl items-center shadow-lg"
+                    disabled={checkResult === false}
+                    className={`w-full py-4 rounded-xl items-center ${checkResult === false ? "bg-gray-400" : "bg-slate-900"}`}
                 >
                     <Text className="text-white font-bold text-base">확인</Text>
                 </TouchableOpacity>
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 
+// 헬퍼 컴포넌트
 function InfoRow({ label, value }) {
     return (
         <View className="flex-row justify-between items-center">

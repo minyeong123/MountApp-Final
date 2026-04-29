@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { ChevronRight, FileText, Heart, MessageSquare, ThumbsUp, User as UserIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// --- 하위 컴포넌트: 게시글 카드 ---
 const PostCard = ({ post, onClick }) => (
     <TouchableOpacity
         onPress={() => onClick(post.id, post.type)}
@@ -22,7 +22,6 @@ const PostCard = ({ post, onClick }) => (
         <Text className="text-sm text-gray-500 mb-3 leading-5 h-10" numberOfLines={2}>
             {post.content}
         </Text>
-
         <View className="flex-row items-center gap-3 border-t border-gray-100 pt-3">
             <View className="flex-row items-center gap-1">
                 <ThumbsUp size={14} color="#9CA3AF" />
@@ -49,56 +48,56 @@ export default function MyPage() {
         stats: { point: 0, like: 0 },
     });
 
-    const BACKEND_URL = Platform.OS === 'android' ? "http://10.0.2.2:8080" : "http://localhost:8080";
+    const BACKEND_URL = "http://10.0.2.2:8082";
 
     useEffect(() => {
         fetchUserInfo();
     }, []);
 
     const fetchUserInfo = async () => {
-        // 실제 구현 시 AsyncStorage에서 토큰 추출 필요
-        const token = "YOUR_JWT_TOKEN";
-
         try {
-            const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const userData = response.data;
+            const token = await AsyncStorage.getItem("jwtToken");
 
-            // 통계 및 포스트 데이터 로드 (병렬 처리)
-            const [countRes, likeCountRes, postsRes] = await Promise.all([
-                axios.get(`${BACKEND_URL}/api/posts/my/count`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${BACKEND_URL}/api/likes/my/count`, { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get(`${BACKEND_URL}/api/posts/my`, { headers: { Authorization: `Bearer ${token}` } })
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
+            const headers = { Authorization: `Bearer ${token}` };
+
+            const [userRes, countRes, likeCountRes, postsRes] = await Promise.all([
+                axios.get(`${BACKEND_URL}/api/auth/me`, { headers }),
+                axios.get(`${BACKEND_URL}/api/posts/my/count`, { headers }),
+                axios.get(`${BACKEND_URL}/api/likes/my/count`, { headers }),
+                axios.get(`${BACKEND_URL}/api/posts/my`, { headers })
             ]);
 
             const mappedPosts = postsRes.data.map(post => ({
                 id: post.id,
                 type: post.rating > 0 ? 'REVIEW' : 'POST',
                 title: post.title,
-                content: post.comment,
+                content: post.comment || post.content,
                 date: post.postdate ? post.postdate.split(' ')[0] : '',
-                likes: post.likeCount,
-                comments: post.commentCount
+                likes: post.likeCount || 0,
+                comments: post.commentCount || 0
             }));
 
             setMyPosts(mappedPosts);
             setUser({
-                name: userData.nickname || userData.name,
-                email: userData.email,
-                userid: userData.userid,
-                profileImage: userData.profileImage,
+                name: userRes.data.nickname || userRes.data.name,
+                email: userRes.data.email,
+                userid: userRes.data.userid,
+                profileImage: userRes.data.profileImage,
                 stats: { point: countRes.data, like: likeCountRes.data }
             });
         } catch (error) {
-            console.error("데이터 로딩 실패", error);
+            console.error(error);
         } finally {
             setLoading(false);
         }
     };
 
     const handlePostClick = (id, type) => {
-        // 네이티브 내비게이션 경로에 맞춰 수정
         if (type === 'REVIEW') {
             navigation.navigate('ReviewDetail', { id });
         } else {
@@ -106,10 +105,16 @@ export default function MyPage() {
         }
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         Alert.alert("로그아웃", "정말 로그아웃 하시겠습니까?", [
             { text: "취소", style: "cancel" },
-            { text: "확인", onPress: () => navigation.replace('Login') }
+            {
+                text: "확인",
+                onPress: async () => {
+                    await AsyncStorage.removeItem("jwtToken");
+                    navigation.replace('Login');
+                }
+            }
         ]);
     };
 
@@ -117,7 +122,7 @@ export default function MyPage() {
 
     if (loading) return (
         <View className="flex-1 justify-center items-center bg-white">
-            <ActivityIndicator size="large" color="#000" />
+            <ActivityIndicator size="large" color="#15803d" />
         </View>
     );
 
@@ -128,7 +133,6 @@ export default function MyPage() {
             </View>
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-                {/* 프로필 섹션 */}
                 <View className="px-5 py-6 flex-row items-center justify-between">
                     <View className="flex-row items-center gap-4">
                         <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center overflow-hidden border border-gray-200">
@@ -139,12 +143,12 @@ export default function MyPage() {
                             )}
                         </View>
                         <View>
-                            <Text className="text-lg font-bold text-gray-900">{user.name}</Text>
-                            <Text className="text-xs text-gray-500">{user.email}</Text>
+                            <Text className="text-lg font-bold text-gray-900">{user.name || "사용자"}</Text>
+                            <Text className="text-xs text-gray-500">{user.email || "이메일 정보 없음"}</Text>
                         </View>
                     </View>
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('ProfileEdit')}
+                        onPress={() => navigation.navigate('profile')}
                         className="flex-row items-center px-3 py-2 border border-gray-200 rounded-full"
                     >
                         <Text className="text-xs text-gray-600 mr-1">수정</Text>
@@ -152,7 +156,6 @@ export default function MyPage() {
                     </TouchableOpacity>
                 </View>
 
-                {/* 통계 카드 */}
                 <View className="flex-row px-5 gap-3 mb-6">
                     <View className="flex-1 bg-gray-50 p-4 rounded-2xl flex-row justify-between items-center">
                         <View>
@@ -172,7 +175,6 @@ export default function MyPage() {
 
                 <View className="h-2 bg-gray-50 mb-6" />
 
-                {/* 탭 메뉴 */}
                 <View className="px-5 mb-4">
                     <Text className="text-lg font-bold text-gray-900 mb-4">내 활동 내역</Text>
                     <View className="flex-row gap-2">
@@ -190,7 +192,6 @@ export default function MyPage() {
                     </View>
                 </View>
 
-                {/* 게시글 리스트 */}
                 <View className="px-5 pb-10">
                     {filteredPosts.length > 0 ? (
                         filteredPosts.map((post) => (
