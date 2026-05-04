@@ -57,7 +57,7 @@ export default function LoginPage() {
                 <View className="px-8 items-center py-10">
 
                     {/* 서비스 로고 & 헤더 */}
-                    <Image source={logo} className="w-28 h-28 rounded-full mb-4" resizeMode="contain" />
+                    <Image source={logo} className="w-28 h-28 rounded-full mb-4" resizeMode="cover" />
                     <Text className="text-[30px] font-bold text-gray-900 mb-2">로그인</Text>
                     <Text className="text-gray-500 text-sm mb-10 text-center">계정에 로그인하여 서비스를 이용해보세요.</Text>
 
@@ -134,7 +134,7 @@ export default function LoginPage() {
                     </View>
 
                     <TouchableOpacity
-                        onPress={() => router.push("/pages/auth/Join_1")}
+                        onPress={() => router.push("/auth/join_1")}
                         className="mt-10"
                     >
                         <Text className="text-sm text-gray-500">

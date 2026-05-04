@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Image, TouchableOpacity, TextInput, Alert, Modal, SafeAreaView, ActivityIndicator } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { EllipsisVertical, Edit, Trash2, Star, StarHalf, User as UserIcon, Heart } from "lucide-react-native";
+import { useRouter, useLocalSearchParams } from "expo-router"; // Expo Router용으로 변경
+import { EllipsisVertical, Edit, Trash2, Star, User as UserIcon, Heart } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-// 🔥 백엔드 서버 주소
-const BACKEND_URL = "http://mountapp.mooo.com:8082";
+// 🔥 백엔드 서버 주소 (Community와 동일하게 10.0.2.2 권장)
+const BACKEND_URL = "http://10.0.2.2:8082";
 
 const getSafeImageUrl = (path) => {
     if (!path) return null;
@@ -33,9 +33,8 @@ const ProfileAvatar = ({ imagePath, nickname, size = "w-11 h-11" }) => {
 };
 
 export default function DetailPage() {
-    const navigation = useNavigation();
-    const route = useRoute();
-    const { id } = route.params; // React Navigation을 통해 전달받은 ID
+    const router = useRouter();
+    const { id } = useLocalSearchParams(); // Expo Router에서 파라미터 가져오기
 
     const [item, setItem] = useState(null);
     const [comments, setComments] = useState([]);
@@ -49,6 +48,7 @@ export default function DetailPage() {
 
     useEffect(() => {
         const fetchDetail = async () => {
+            if (!id) return;
             try {
                 const token = await AsyncStorage.getItem("jwtToken");
                 const response = await axios.get(`${BACKEND_URL}/api/posts/${id}`, {
@@ -70,8 +70,9 @@ export default function DetailPage() {
                 });
                 setComments(commentsRes.data);
             } catch (error) {
+                console.error("로딩 에러:", error);
                 Alert.alert("오류", "데이터 로딩 중 문제가 발생했습니다.");
-                navigation.goBack();
+                router.back();
             } finally {
                 setLoading(false);
             }
@@ -120,13 +121,14 @@ export default function DetailPage() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setShowDeleteModal(false);
-            navigation.goBack();
+            router.back();
         } catch (error) {
             Alert.alert("실패", "삭제 권한이 없습니다.");
         }
     };
 
     if (loading) return <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#6366f1" /></View>;
+    if (!item) return null;
 
     const isReview = (item?.rating && item.rating > 0);
 
@@ -150,24 +152,29 @@ export default function DetailPage() {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <ScrollView className="flex-1 px-4">
-                {/* 상단 액션바 */}
+            <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+                {/* 1. 상단 헤더 섹션 */}
                 <View className="flex-row justify-between items-center py-4 border-b border-gray-100">
-                    <TouchableOpacity onPress={() => navigation.goBack()} className="p-1">
-                        <Text className="text-gray-600">뒤로</Text>
+                    <TouchableOpacity onPress={() => router.back()} className="p-1">
+                        <Text className="text-gray-600 font-bold">뒤로</Text>
                     </TouchableOpacity>
-                    <Text className="text-lg font-bold flex-1 text-center" numberOfLines={1}>{item.title}</Text>
+                    <Text className="text-lg font-bold flex-1 text-center" numberOfLines={1}>
+                        {item.title}
+                    </Text>
                     <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)} className="p-1">
                         <EllipsisVertical size={20} color="#374151" />
                     </TouchableOpacity>
                 </View>
 
-                {/* 수정/삭제 메뉴 (모달 대신 간단한 오버레이 처리) */}
+                {/* 2. 수정/삭제 팝업 메뉴 */}
                 {menuOpen && (
                     <View className="absolute right-4 top-14 bg-white shadow-xl border border-gray-100 rounded-xl z-50 py-2 w-32">
                         <TouchableOpacity
                             className="px-4 py-3 border-b border-gray-50 flex-row items-center space-x-2"
-                            onPress={() => { setMenuOpen(false); navigation.navigate("NewPost", { isEdit: true, postData: item }); }}
+                            onPress={() => {
+                                setMenuOpen(false);
+                                router.push({ pathname: "/community/newpost", params: { isEdit: "true", postData: JSON.stringify(item) } });
+                            }}
                         >
                             <Edit size={16} color="#4b5563" />
                             <Text className="text-gray-700">수정</Text>
@@ -182,33 +189,34 @@ export default function DetailPage() {
                     </View>
                 )}
 
-                {/* 작성자 정보 */}
+                {/* 3. 작성자 및 별점 정보 (여기가 191번 줄 근처입니다) */}
                 <View className="flex-row justify-between items-center mt-6">
                     <View className="flex-row items-center space-x-3">
                         <ProfileAvatar imagePath={item.profileImage} nickname={item.nickname} />
                         <View>
-                            <Text className="font-bold text-gray-800">{item.nickname}</Text>
+                            <Text className="font-bold text-gray-800">{item.nickname || "익명"}</Text>
                             <Text className="text-xs text-gray-500">{item.postdate || "날짜 정보 없음"}</Text>
                         </View>
                     </View>
-                    {isReview && renderStars(item.rating)}
+                    {isReview ? renderStars(item.rating) : null}
                 </View>
 
-                {/* 메인 이미지 */}
-                {item.imagePath && (
+                {/* 4. 이미지 및 본문 */}
+                {item.imagePath ? (
                     <Image
                         source={{ uri: getSafeImageUrl(item.imagePath) }}
                         className="w-full h-64 rounded-2xl mt-5"
                         resizeMode="cover"
                     />
-                )}
+                ) : null}
 
-                {/* 본문 */}
-                <Text className="mt-5 text-gray-800 leading-6 text-[15px]">
-                    {item.postContents || item.comment || item.content}
-                </Text>
+                <View className="mt-5">
+                    <Text className="text-gray-800 leading-6 text-[15px]">
+                        {item.postContents || item.comment || item.content || ""}
+                    </Text>
+                </View>
 
-                {/* 좋아요 */}
+                {/* 5. 좋아요 버튼 */}
                 <View className="flex-row items-center mt-6 space-x-2">
                     <TouchableOpacity onPress={onLikeClick}>
                         <Heart size={28} color={liked ? "#ef4444" : "#374151"} fill={liked ? "#ef4444" : "transparent"} />
@@ -216,7 +224,7 @@ export default function DetailPage() {
                     <Text className="font-bold text-gray-800">좋아요 {likeCount}개</Text>
                 </View>
 
-                {/* 댓글 섹션 */}
+                {/* 6. 댓글 영역 */}
                 <View className="mt-10 mb-20">
                     <Text className="text-lg font-bold mb-4">댓글 ({comments.length})</Text>
 
@@ -250,7 +258,7 @@ export default function DetailPage() {
                 </View>
             </ScrollView>
 
-            {/* 삭제 확인 모달 */}
+            {/* 삭제 확인 모달은 ScrollView 밖에 두는 것이 좋습니다 */}
             <Modal visible={showDeleteModal} transparent animationType="fade">
                 <View className="flex-1 bg-black/50 justify-center items-center px-10">
                     <View className="bg-white p-6 rounded-2xl w-full">
@@ -267,5 +275,4 @@ export default function DetailPage() {
                 </View>
             </Modal>
         </SafeAreaView>
-    );
-}
+    );}

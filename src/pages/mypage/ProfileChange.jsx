@@ -126,7 +126,7 @@ export default function ProfileChange() {
 
     return (
         <View className="flex-1 bg-white">
-            <View className="flex-row items-center h-24 px-4 pt-10 border-b border-gray-100">
+            <View className="flex-row items-center h-24 px-4 pt-5 border-b border-gray-100">
                 <TouchableOpacity onPress={() => router.back()} className="p-2">
                     <ChevronLeft size={24} color="#1A1A1A" />
                 </TouchableOpacity>

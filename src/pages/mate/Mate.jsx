@@ -49,7 +49,7 @@ export default function Mate() { // navigation 인자 제거
     return (
         <SafeAreaView className="flex-1 bg-white">
             {/* 상단 헤더 */}
-            <View className="px-4 py-3 bg-white border-b border-gray-50">
+            <View className="px-4 py-3 bg-white border-b border-gray-50 mt-6">
                 <View className="flex-row items-center space-x-3 mb-4">
                     <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-10">
                         <Search size={18} color="#9ca3af" />

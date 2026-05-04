@@ -80,7 +80,7 @@ export default function MateDetail({ id }) {
     return (
         <View className="flex-1 bg-white">
             {/* Navigation Bar */}
-            <View className="flex-row justify-between items-center px-4 pt-14 pb-4 border-b border-gray-100 bg-white">
+            <View className="flex-row justify-between items-center px-4 pt-6 pb-4 border-b border-gray-100 bg-white">
                 <View className="flex-row items-center">
                     <TouchableOpacity onPress={() => router.back()} className="mr-3">
                         <ChevronLeft size={24} color="#1A1A1A" />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { ChevronRight, FileText, Heart, MessageSquare, ThumbsUp, User as UserIcon } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router'; // 1. useRouter 임포트
 import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -36,7 +36,7 @@ const PostCard = ({ post, onClick }) => (
 );
 
 export default function MyPage() {
-    const navigation = useNavigation();
+    const router = useRouter(); // 2. navigation 대신 router 사용
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("ALL");
     const [myPosts, setMyPosts] = useState([]);
@@ -99,9 +99,9 @@ export default function MyPage() {
 
     const handlePostClick = (id, type) => {
         if (type === 'REVIEW') {
-            navigation.navigate('ReviewDetail', { id });
+            router.push(`/review/${id}`); // 경로 형식으로 변경
         } else {
-            navigation.navigate('PostDetail', { id });
+            router.push(`/post/${id}`); // 경로 형식으로 변경
         }
     };
 
@@ -111,8 +111,9 @@ export default function MyPage() {
             {
                 text: "확인",
                 onPress: async () => {
+                    // 토큰 삭제 후 로그인 페이지로 교체 (뒤로가기 방지)
                     await AsyncStorage.removeItem("jwtToken");
-                    navigation.replace('Login');
+                    router.replace('/');
                 }
             }
         ]);
@@ -148,7 +149,7 @@ export default function MyPage() {
                         </View>
                     </View>
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('profile')}
+                        onPress={() => router.push('/mypage/profile')} // 경로 형식으로 변경
                         className="flex-row items-center px-3 py-2 border border-gray-200 rounded-full"
                     >
                         <Text className="text-xs text-gray-600 mr-1">수정</Text>

@@ -1,74 +1,98 @@
-import React from "react";
-import { Tabs } from "expo-router";
-import { Text, StyleSheet, Platform } from "react-native";
-// 캡처 화면의 아이콘들과 가장 유사한 Lucide 아이콘들입니다.
+import React, { useState } from "react";
+// 1. useSegments 임포트 추가 (현재 경로 확인용)
+import { Tabs, useSegments } from "expo-router";
+import { Text, StyleSheet, Platform, View } from "react-native";
 import { House, Map, UserSearch, MessageSquareText, CircleUserRound } from "lucide-react-native";
 import "../../global.css";
-export default function TabLayout() {
-    return (
-        <Tabs
-            screenOptions={{
-                headerShown: false,
-                tabBarStyle: styles.tabBar,
-                tabBarActiveTintColor: "#2563eb", // 활성화 시 좀 더 진한 파란색
-                tabBarInactiveTintColor: "#6b7280", // 비활성화 회색
-            }}
-        >
-            <Tabs.Screen
-                name="home"
-                options={{
-                    title: "홈",
-                    tabBarIcon: ({ color }) => <House size={24} color={color} />,
-                    tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>홈</Text>,
-                }}
-            />
-            <Tabs.Screen
-                name="map"
-                options={{
-                    title: "지도",
-                    tabBarIcon: ({ color }) => <Map size={24} color={color} />,
-                    tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>지도</Text>,
-                }}
-            />
-            {/* 아래 탭들은 파일이 없어도 레이아웃 구성을 위해 추가합니다.
-          실제 파일(mate.jsx 등)을 만들면 바로 연결됩니다. */}
-            <Tabs.Screen
-                name="mate"
-                options={{
-                    title: "메이트",
-                    tabBarIcon: ({ color }) => <UserSearch size={24} color={color} />,
-                    tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>메이트</Text>,
-                }}
-            />
-            <Tabs.Screen
-                name="community"
-                options={{
-                    title: "커뮤니티",
-                    tabBarIcon: ({ color }) => <MessageSquareText size={24} color={color} />,
-                    tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>커뮤니티</Text>,
-                }}
-            />
-            <Tabs.Screen
-                name="mypage"
-                options={{
-                    title: "마이페이지",
-                    tabBarIcon: ({ color }) => <CircleUserRound size={24} color={color} />,
-                    tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>마이페이지</Text>,
-                }}
-            />
-            />
 
-        </Tabs>
+// 컴포넌트 임포트
+import NeogulGuide from "../../src/components/NeogulGuide";
+import ChatBot from "../../src/pages/chatbot/ChatBot";
+
+export default function TabLayout() {
+    // 챗봇 열림/닫힘 상태 관리
+    const [isChatOpen, setIsChatOpen] = useState(false);
+
+    // 2. 현재 경로의 세그먼트(배열 형태) 가져오기
+    const segments = useSegments();
+
+    // 3. 현재 화면이 홈인지 확인
+    // Expo Router 구조상 (tabs)/home 경로에 있으면 segments 배열에 "home"이 포함됩니다.
+    const isHomeScreen = segments[segments.length - 1] === "home" || segments.length === 1;
+
+    return (
+        <View style={{ flex: 1 }}>
+            <Tabs
+                screenOptions={{
+                    headerShown: false,
+                    tabBarStyle: styles.tabBar,
+                    tabBarActiveTintColor: "#2563eb",
+                    tabBarInactiveTintColor: "#6b7280",
+                }}
+            >
+                <Tabs.Screen
+                    name="home"
+                    options={{
+                        title: "홈",
+                        tabBarIcon: ({ color }) => <House size={24} color={color} />,
+                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>홈</Text>,
+                    }}
+                />
+                <Tabs.Screen
+                    name="map"
+                    options={{
+                        title: "지도",
+                        tabBarIcon: ({ color }) => <Map size={24} color={color} />,
+                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>지도</Text>,
+                    }}
+                />
+                <Tabs.Screen
+                    name="mate"
+                    options={{
+                        title: "메이트",
+                        tabBarIcon: ({ color }) => <UserSearch size={24} color={color} />,
+                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>메이트</Text>,
+                    }}
+                />
+                <Tabs.Screen
+                    name="community"
+                    options={{
+                        title: "커뮤니티",
+                        tabBarIcon: ({ color }) => <MessageSquareText size={24} color={color} />,
+                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>커뮤니티</Text>,
+                    }}
+                />
+                <Tabs.Screen
+                    name="mypage"
+                    options={{
+                        title: "마이페이지",
+                        tabBarIcon: ({ color }) => <CircleUserRound size={24} color={color} />,
+                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>마이페이지</Text>,
+                    }}
+                />
+            </Tabs>
+
+            {/* --- 4. 홈 화면일 때만 너굴 AI 버튼과 챗봇 모달 표시 --- */}
+            {isHomeScreen && (
+                <>
+                    <NeogulGuide onOpen={() => setIsChatOpen(true)} />
+                    <ChatBot
+                        visible={isChatOpen}
+                        onClose={() => setIsChatOpen(false)}
+                    />
+                </>
+            )}
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     tabBar: {
-        height: 85, // 캡처 화면처럼 넉넉한 높이
+        height: 85,
         backgroundColor: "white",
         borderTopWidth: 1,
         borderTopColor: "#e5e7eb",
-        paddingBottom: Platform.OS === "ios" ? 30 : 15, // 기종별 하단 여백 처리
+        paddingBottom: Platform.OS === "ios" ? 30 : 15,
         paddingTop: 10,
     },
     tabLabel: {

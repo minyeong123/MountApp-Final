@@ -8,6 +8,8 @@ import { Siren, Search, MessageCircleMore } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import DisasterBanner from "../../../components/DisasterBanner";
+import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 
 const logo = require("../../assets/logo.png");
 
@@ -120,16 +122,41 @@ export default function Home() {
         <SafeAreaView className="flex-1 bg-white">
             <ScrollView className="flex-1 px-4">
                 {/* 헤더 */}
-                <View className="flex-row justify-between items-center py-4">
+                <View className="flex-row justify-between items-center py-6 mt-4">
                     <View className="flex-row items-center">
-                        <Image source={logo} className="w-9 h-9 rounded-full" resizeMode="contain" />
-                        <Text className="text-xl font-black text-[#15803d] ml-2">MountApp</Text>
+                        <Image source={logo} className="w-12 h-12 rounded-full " resizeMode="cover" />
+                        {/* 그라데이션 텍스트 적용 영역 */}
+                        <MaskedView
+                            // height를 텍스트 크기에 맞춰 40 정도로 줄이고 수직 중앙 정렬 추가
+                            style={{ width: 160, height: 40, marginLeft: 8, justifyContent: 'center' }}
+                            maskElement={
+                                <View style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'center' }}>
+                                    <Text
+                                        style={{
+                                            fontSize: 25, // 크기를 살짝 키웠습니다.
+                                            fontWeight: '900',
+                                            includeFontPadding: false, // 안드로이드 폰트 기본 여백 제거 (중앙 맞춤 필수)
+                                            textAlignVertical: 'center' // 안드로이드 세로 중앙
+                                        }}
+                                    >
+                                        MountApp
+                                    </Text>
+                                </View>
+                            }
+                        >
+                            <LinearGradient
+                                colors={['#16a34a', '#2563eb']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ flex: 1 }}
+                            />
+                        </MaskedView>
                     </View>
                     <View className="flex-row">
-                        <TouchableOpacity onPress={() => router.push("/search")}>
+                        <TouchableOpacity onPress={() => router.push("/home/searchpage")}>
                             <Search size={24} color="black" />
                         </TouchableOpacity>
-                        <TouchableOpacity className="ml-4" onPress={() => router.push("/chat")}>
+                        <TouchableOpacity className="ml-4" onPress={() => router.push("/mate/chat")}>
                             <MessageCircleMore size={24} color="black" />
                         </TouchableOpacity>
                     </View>

@@ -26,7 +26,7 @@ const ChatBot = ({ visible, onClose }) => {
     const regions = ["전국", "서울", "경기", "강원", "충청", "경상", "전라", "제주"];
     const levels = ["초보자", "중급자", "상급자"];
     const SYSTEM_PROMPT = " (지정한 날짜와 지역 정보를 토대로 추천 산행 정보를 300자 이내로 설명해 줘.)";
-    const SERVER_URL = "http://YOUR_SERVER_IP:8082";
+    const SERVER_URL = "http://10.0.2.2:8082";
 
     // 시간 포맷
     const getCurrentTime = () => {

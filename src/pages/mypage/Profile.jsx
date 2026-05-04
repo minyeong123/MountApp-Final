@@ -90,7 +90,7 @@ export default function Profile() {
     return (
         <SafeAreaView className="flex-1 bg-white">
             {/* 상단 헤더 */}
-            <View className="flex-row items-center h-14 px-4 border-b border-gray-100">
+            <View className="flex-row items-center h-14 px-4 border-b border-gray-100 mt-6">
                 <TouchableOpacity onPress={() => router.back()} className="p-2">
                     <ChevronLeft size={24} color="#1A1A1A" />
                 </TouchableOpacity>
@@ -151,7 +151,7 @@ export default function Profile() {
                     <View className="flex-row justify-between items-center mb-4">
                         <Text className="text-lg font-bold text-gray-900">내 정보</Text>
                         <TouchableOpacity
-                            onPress={() => router.push('/profilechange')}
+                            onPress={() => router.push('mypage/profilechange')}
                             className="flex-row items-center"
                         >
                             <Text className="text-sm text-gray-400 mr-1">수정하기</Text>

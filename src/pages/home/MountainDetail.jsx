@@ -1,26 +1,22 @@
 import React, { useEffect, useState } from "react";
 import {
     View, Text, Image, ScrollView, TouchableOpacity,
-    ActivityIndicator, Dimensions, StyleSheet, SafeAreaView
+    ActivityIndicator, Dimensions, SafeAreaView, Platform, StatusBar
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, Mountain as MountainIcon, Flag, Info, CheckCircle2 } from "lucide-react-native";
+import {
+    ArrowLeft, Mountain as MountainIcon, Flag, CheckCircle2,
+    ChevronLeft, ChevronRight, Info
+} from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-// 🔥 방금 앱용으로 변환한 컴포넌트들을 불러옵니다!
 import MountainCourse from "./MountainCourse";
 import MountainWeather from "./MountainWeather";
 
 const LOGO_IMAGE = require("../../assets/logo.png");
 const { width } = Dimensions.get("window");
-
-const getDebuggingUrl = () => {
-    return "http://10.0.2.2:8082"; // [1] 에뮬레이터용
-    // return "http://mountapp.mooo.com:8082"; // [3] DDNS 외부망 테스트용
-};
-
-const API_BASE_URL = getDebuggingUrl();
+const API_BASE_URL = "http://10.0.2.2:8082";
 
 export default function MountainDetail() {
     const { id } = useLocalSearchParams();
@@ -28,15 +24,11 @@ export default function MountainDetail() {
     const [mountain, setMountain] = useState(null);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState("home");
-
-    // 사진 스와이프를 위한 인덱스 상태
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     const getSafeImageSource = (path) => {
         if (!path || typeof path !== 'string') return LOGO_IMAGE;
-        if (path.startsWith("http") && !path.includes("8082") && !path.includes("mountapp.mooo.com")) {
-            return { uri: path };
-        }
+        if (path.startsWith("http") && !path.includes("8082") && !path.includes("mountapp.mooo.com")) return { uri: path };
         const filename = path.split('\\').pop().split('/').pop();
         return { uri: `${API_BASE_URL}/uploads/${filename}` };
     };
@@ -50,154 +42,141 @@ export default function MountainDetail() {
                 });
                 setMountain(res.data);
             } catch (error) {
-                console.error("산 상세 정보 로딩 실패:", error);
+                console.error("로딩 실패:", error);
             } finally {
                 setLoading(false);
             }
         };
-
-        if (id) {
-            fetchMountainDetail();
-        }
+        if (id) fetchMountainDetail();
     }, [id]);
 
-    const handleScroll = (event) => {
-        const slideSize = event.nativeEvent.layoutMeasurement.width;
-        const index = Math.round(event.nativeEvent.contentOffset.x / slideSize);
-        setCurrentImageIndex(index);
-    };
-
     if (loading) return (
-        <SafeAreaView style={styles.center}><ActivityIndicator size="large" color="#15803d" /><Text style={{marginTop:10}}>로딩 중...</Text></SafeAreaView>
+        <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
+            <ActivityIndicator size="large" color="#15803d" />
+            <Text className="mt-2 text-gray-500">로딩 중...</Text>
+        </SafeAreaView>
     );
 
-    if (!mountain) return (
-        <SafeAreaView style={styles.center}><Text>산 정보를 찾을 수 없습니다.</Text></SafeAreaView>
-    );
-
-    const images = mountain.imageUrl ? mountain.imageUrl.split(",") : [];
+    const images = mountain?.imageUrl ? mountain.imageUrl.split(",") : [];
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-            <ScrollView style={styles.container}>
+        <SafeAreaView
+            className="flex-1 bg-white"
+            style={{ paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}
+        >
+            <ScrollView className="flex-1 bg-white" stickyHeaderIndices={[3]}>
                 {/* 헤더 영역 */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <View className="flex-row items-center justify-center p-4 bg-white relative">
+                    <TouchableOpacity onPress={() => router.back()} className="absolute left-4 p-2">
                         <ArrowLeft size={24} color="#374151" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{mountain.name}</Text>
+                    <Text className="text-xl font-bold text-gray-900">{mountain?.name}</Text>
                 </View>
 
-                {/* 이미지 스와이프 영역 */}
-                <View style={styles.imageContainer}>
+                {/* 이미지 스와이프 영역 (웹 UI 그대로 재현) */}
+                <View className="relative w-full h-[250px] bg-gray-100">
                     {images.length > 0 ? (
                         <>
                             <ScrollView
                                 horizontal
                                 pagingEnabled
                                 showsHorizontalScrollIndicator={false}
-                                onMomentumScrollEnd={handleScroll}
-                                style={{ width: width, height: 250 }}
+                                onMomentumScrollEnd={(e) => {
+                                    const index = Math.round(e.nativeEvent.contentOffset.x / width);
+                                    setCurrentImageIndex(index);
+                                }}
+                                style={{ width, height: 250 }}
                             >
                                 {images.map((imgUrl, index) => (
                                     <Image
                                         key={index}
                                         source={getSafeImageSource(imgUrl)}
-                                        style={{ width: width, height: 250 }}
+                                        style={{ width, height: 250 }}
                                         resizeMode="cover"
                                     />
                                 ))}
                             </ScrollView>
+                            {/* 좌우 화살표 버튼 (웹 UI 스타일) */}
                             {images.length > 1 && (
-                                <View style={styles.indicatorContainer}>
-                                    <Text style={styles.indicatorText}>
-                                        {currentImageIndex + 1} / {images.length}
-                                    </Text>
+                                <View className="absolute w-full h-full flex-row justify-between items-center px-2">
+                                    <View className="bg-black/20 rounded-full p-1"><ChevronLeft size={24} color="white" /></View>
+                                    <View className="bg-black/20 rounded-full p-1"><ChevronRight size={24} color="white" /></View>
                                 </View>
                             )}
                         </>
                     ) : (
-                        <Image source={LOGO_IMAGE} style={{ width: width, height: 250 }} resizeMode="contain" />
+                        <Image source={LOGO_IMAGE} className="w-full h-full" resizeMode="contain" />
                     )}
                 </View>
 
-                <View style={styles.descriptionBox}>
-                    <Text style={styles.descriptionText}>{mountain.description}</Text>
+                {/* 산 설명 (Border-b-4 스타일 유지) */}
+                <View className="px-5 py-6 border-b-[6px] border-gray-100">
+                    <Text className="text-gray-700 text-[15px] leading-6">
+                        {mountain?.description}
+                    </Text>
                 </View>
 
-                {/* 탭 버튼 영역 */}
-                <View style={styles.tabContainer}>
+                {/* 탭 버튼 영역 (Sticky 설정됨) */}
+                <View className="flex-row justify-around bg-white border-b border-gray-200">
                     {["home", "course", "weather", "notice"].map((t) => (
-                        <TouchableOpacity key={t} onPress={() => setTab(t)} style={[styles.tabButton, tab === t && styles.activeTab]}>
-                            <Text style={[styles.tabText, tab === t && styles.activeTabText]}>
-                                {t === "home" ? "홈" : t === "course" ? "코스" : t === "weather" ? "날씨" : "유의사항"}
+                        <TouchableOpacity
+                            key={t}
+                            onPress={() => setTab(t)}
+                            className={`py-4 px-4 ${tab === t ? 'border-b-2 border-blue-600' : ''}`}
+                        >
+                            <Text className={`text-[14px] font-bold ${tab === t ? 'text-blue-600' : 'text-gray-500'}`}>
+                                {t === "home" ? "홈" : t === "course" ? "추천코스" : t === "weather" ? "날씨" : "유의사항"}
                             </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
 
-                {/* 탭 내용 렌더링 영역 */}
-                <View style={styles.content}>
+                {/* 탭 내용 */}
+                <View className="p-5">
                     {tab === "home" && (
-                        <View style={styles.infoCard}>
-                            <View style={styles.infoGrid}>
-                                <View style={styles.infoItem}>
-                                    <Text style={styles.infoLabel}>최고 고도</Text>
-                                    <View style={styles.infoRow}><MountainIcon size={20} color="#15803d" /><Text style={styles.infoValue}>{mountain.height || 0}m</Text></View>
+                        <View className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                            <View className="flex-row items-center mb-5">
+                                <Info size={18} color="#2563eb" />
+                                <Text className="font-bold text-gray-800 ml-2 text-base">산행 정보</Text>
+                            </View>
+                            <View className="flex-row justify-around">
+                                <View className="items-center">
+                                    <Text className="text-gray-400 text-xs mb-1">최고 고도</Text>
+                                    <View className="flex-row items-center">
+                                        <MountainIcon size={20} color="#374151" />
+                                        <Text className="text-xl font-bold ml-1">{mountain?.height || 0}m</Text>
+                                    </View>
                                 </View>
-                                <View style={styles.infoItem}>
-                                    <Text style={styles.infoLabel}>난이도</Text>
-                                    <View style={styles.infoRow}><Flag size={20} color="#eab308" /><Text style={styles.infoValue}>보통</Text></View>
+                                <View className="items-center">
+                                    <Text className="text-gray-400 text-xs mb-1">난이도</Text>
+                                    <View className="flex-row items-center">
+                                        <Flag size={20} color="#eab308" />
+                                        <Text className="text-xl font-bold ml-1">보통</Text>
+                                    </View>
                                 </View>
                             </View>
                         </View>
                     )}
 
                     {tab === "notice" && (
-                        mountain.notices ? (
-                            mountain.notices.split("|").map((n, i) => (
-                                <View key={i} style={styles.noticeItem}><CheckCircle2 size={20} color="#22c55e" /><Text style={styles.noticeText}>{n.trim()}</Text></View>
-                            ))
-                        ) : (
-                            <Text style={styles.emptyText}>등록된 유의사항이 없습니다.</Text>
-                        )
+                        <View className="space-y-3">
+                            {mountain?.notices ? (
+                                mountain.notices.split("|").map((n, i) => (
+                                    <View key={i} className="flex-row items-start bg-white p-4 rounded-xl border border-gray-100 mb-3 shadow-sm">
+                                        <CheckCircle2 size={20} color="#22c55e" />
+                                        <Text className="ml-3 text-gray-700 font-medium flex-1 text-sm">{n.trim()}</Text>
+                                    </View>
+                                ))
+                            ) : (
+                                <Text className="text-center text-gray-400 mt-10">등록된 유의사항이 없습니다.</Text>
+                            )}
+                        </View>
                     )}
 
-                    {/* 🔥 정보 준비 중... 텍스트를 지우고 실제 컴포넌트 연결! */}
-                    {tab === "course" && <MountainCourse trails={mountain.trails} />}
+                    {tab === "course" && <MountainCourse trails={mountain?.trails} />}
                     {tab === "weather" && <MountainWeather mountain={mountain} />}
                 </View>
             </ScrollView>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#f9fafb" },
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    header: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: '#eee' },
-    backButton: { position: "absolute", left: 16 },
-    headerTitle: { fontSize: 18, fontWeight: "800" },
-
-    imageContainer: { width: width, height: 250, backgroundColor: "#f3f4f6", position: 'relative' },
-    indicatorContainer: { position: 'absolute', bottom: 12, right: 12, backgroundColor: 'rgba(0, 0, 0, 0.6)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 15 },
-    indicatorText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
-
-    descriptionBox: { padding: 20, backgroundColor: "white" },
-    descriptionText: { color: "#4b5563", fontSize: 15, lineHeight: 22 },
-    tabContainer: { flexDirection: "row", justifyContent: "space-around", backgroundColor: "white", borderBottomWidth: 1, borderBottomColor: "#e5e7eb" },
-    tabButton: { paddingVertical: 15, paddingHorizontal: 10 },
-    activeTab: { borderBottomWidth: 3, borderBottomColor: "#15803d" },
-    tabText: { fontSize: 14, fontWeight: "700", color: "#9ca3af" },
-    activeTabText: { color: "#15803d" },
-    content: { padding: 16 },
-    infoCard: { backgroundColor: "white", borderRadius: 15, padding: 20, borderWidth: 1, borderColor: "#e5e7eb" },
-    infoGrid: { flexDirection: "row", justifyContent: "space-around" },
-    infoItem: { alignItems: "center" },
-    infoLabel: { color: "#9ca3af", fontSize: 12, marginBottom: 6 },
-    infoRow: { flexDirection: "row", alignItems: "center" },
-    infoValue: { fontSize: 18, fontWeight: "800", marginLeft: 6 },
-    noticeItem: { flexDirection: "row", backgroundColor: "white", padding: 15, borderRadius: 12, borderWidth: 1, borderColor: "#e5e7eb", marginBottom: 10, alignItems: "center" },
-    noticeText: { marginLeft: 10, fontSize: 14, color: "#374151" },
-    emptyText: { textAlign: "center", color: "#9ca3af", marginTop: 40 }
-});

@@ -1,9 +1,5 @@
-import { View, Text } from 'react-native';
+import Map from "../../src/pages/map/Map";
 
-export default function ExploreScreen() {
-    return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
-            <Text style={{ fontSize: 20 }}>탐색 페이지</Text>
-        </View>
-    );
+export default function Page() {
+    return <Map />;
 }

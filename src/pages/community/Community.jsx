@@ -1,18 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, SafeAreaView, Alert, Dimensions } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useRouter } from "expo-router"; //
 import { Star, StarHalf, PenLine, Camera, CameraOff, Megaphone, ThumbsUp, User as UserIcon } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 const { width } = Dimensions.get("window");
-// 🔥 백엔드 서버 주소 (모바일에서는 localhost 대신 실제 IP 사용 권장)
-const BACKEND_URL = "http://mountapp.mooo.com:8082";
 
-// 이미지 경로 처리 함수
+// 🔥 에뮬레이터 연동 핵심: localhost 대신 10.0.2.2 사용
+const BACKEND_URL = "http://10.0.2.2:8082";
+
+// 이미지 경로 처리 함수 (Mate.jsx 스타일로 최적화)
 const getSafeImageUrl = (path) => {
-    if (!path) return null;
+    if (!path) return "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=800";
     if (path.startsWith("http")) return path;
+
+    // 파일명만 추출하여 서버 주소와 결합
     const filename = path.split('\\').pop().split('/').pop();
     return `${BACKEND_URL}/uploads/${filename}`;
 };
@@ -36,32 +39,40 @@ const ProfileAvatar = ({ imagePath, nickname, size = "w-6 h-6" }) => {
 };
 
 export default function Community() {
-    const navigation = useNavigation();
+    const router = useRouter(); //
     const [posts, setPosts] = useState([]);
     const [reviews, setReviews] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState("전체");
+    const [loading, setLoading] = useState(false);
     const categories = ["전체", "산", "등산용품", "맛집", "숙소"];
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const token = await AsyncStorage.getItem("jwtToken");
-                const response = await axios.get(`${BACKEND_URL}/api/posts`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const allData = response.data;
-                // rating 0은 일반글, 0보다 크면 리뷰
-                setPosts(allData.filter(item => (item.rating || 0) === 0).reverse());
-                setReviews(allData.filter(item => (item.rating || 0) > 0).reverse());
-            } catch (error) {
-                if (error.response?.status === 401 || error.response?.status === 403) {
-                    Alert.alert("알림", "로그인이 필요한 서비스입니다.");
-                    navigation.navigate("Login");
-                }
+    // 🔥 데이터 로드 로직
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const token = await AsyncStorage.getItem("jwtToken");
+
+            const response = await axios.get(`${BACKEND_URL}/api/posts`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+
+            const allData = response.data;
+            setPosts(allData.filter(item => (item.rating || 0) === 0).reverse());
+            setReviews(allData.filter(item => (item.rating || 0) > 0).reverse());
+        } catch (error) {
+            console.error("데이터 로드 에러:", error);
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                Alert.alert("알림", "로그인이 필요한 서비스입니다.");
+                router.push("/auth/LoginPage"); // 로그인 페이지 이동도 router로 변경 가능
             }
-        };
+        } finally {
+            setLoading(false);
+        }
+    }, [router]);
+
+    useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     const renderStars = (rating) => {
         const score = Number(rating) || 0;
@@ -86,7 +97,7 @@ export default function Community() {
     return (
         <SafeAreaView className="flex-1 bg-gray-50">
             {/* 헤더 */}
-            <View className="bg-white py-4 items-center shadow-sm border-b border-gray-100">
+            <View className="bg-white py-4 items-center shadow-sm border-b border-gray-100 mt-4">
                 <Text className="text-xl font-bold text-gray-900">커뮤니티</Text>
             </View>
 
@@ -102,7 +113,7 @@ export default function Community() {
                             <Text className="text-xl font-bold text-gray-900">게시글</Text>
                         </View>
                         <TouchableOpacity
-                            onPress={() => navigation.navigate("NewPost", { type: "post" })}
+                            onPress={() => router.push("/community/newpost")}
                             className="bg-blue-600 px-4 py-2 rounded-full flex-row items-center space-x-1"
                         >
                             <PenLine size={16} color="white" />
@@ -115,14 +126,16 @@ export default function Community() {
                             posts.map(post => (
                                 <TouchableOpacity
                                     key={post.id}
-                                    onPress={() => navigation.navigate("PostDetail", { id: post.id })}
+                                    onPress={() => router.push({ pathname: "/community/[id]", params: { id: post.id } })}
                                     className="w-[240px] bg-white rounded-2xl mr-3 overflow-hidden border border-gray-100 shadow-sm"
                                 >
                                     <View className="h-28 bg-gray-200">
                                         {post.imagePath ? (
                                             <Image source={{ uri: getSafeImageUrl(post.imagePath) }} className="w-full h-full" />
                                         ) : (
-                                            <View className="flex-1 items-center justify-center bg-blue-50"><CameraOff size={24} color="#bfdbfe" /></View>
+                                            <View className="flex-1 items-center justify-center bg-blue-50">
+                                                <CameraOff size={24} color="#bfdbfe" />
+                                            </View>
                                         )}
                                     </View>
                                     <View className="p-3">
@@ -131,7 +144,9 @@ export default function Community() {
                                             <Text className="text-[10px] text-gray-500 font-medium">{post.nickname || "익명"}</Text>
                                         </View>
                                         <Text className="font-bold text-sm text-gray-900 mb-1" numberOfLines={1}>{post.title}</Text>
-                                        <Text className="text-gray-500 text-[11px] leading-4 h-8" numberOfLines={2}>{post.comment || post.postContents}</Text>
+                                        <Text className="text-gray-500 text-[11px] leading-4 h-8" numberOfLines={2}>
+                                            {post.comment || post.postContents}
+                                        </Text>
                                     </View>
                                 </TouchableOpacity>
                             ))
@@ -153,7 +168,7 @@ export default function Community() {
                             <Text className="text-xl font-bold text-gray-900">리뷰</Text>
                         </View>
                         <TouchableOpacity
-                            onPress={() => navigation.navigate("NewPost", { type: "review" })}
+                            onPress={() => router.push({ pathname: "/community/newpost", params: { type: "review" } })}
                             className="bg-emerald-600 px-4 py-2 rounded-full flex-row items-center space-x-1"
                         >
                             <Camera size={16} color="white" />
@@ -181,14 +196,16 @@ export default function Community() {
                             filteredReviews.map((review, index) => (
                                 <TouchableOpacity
                                     key={review.id || index}
-                                    onPress={() => navigation.navigate("ReviewDetail", { id: review.id })}
+                                    onPress={() => router.push({ pathname: "/community/[id]", params: { id: review.id } })}
                                     className="w-[240px] bg-white rounded-2xl mr-3 overflow-hidden border border-gray-100 shadow-sm"
                                 >
                                     <View className="h-28 bg-gray-200">
                                         {review.imagePath ? (
                                             <Image source={{ uri: getSafeImageUrl(review.imagePath) }} className="w-full h-full" />
                                         ) : (
-                                            <View className="flex-1 items-center justify-center"><CameraOff size={24} color="#d1d5db" /></View>
+                                            <View className="flex-1 items-center justify-center">
+                                                <CameraOff size={24} color="#d1d5db" />
+                                            </View>
                                         )}
                                     </View>
                                     <View className="p-3">
@@ -200,7 +217,9 @@ export default function Community() {
                                             <Text className="font-bold text-sm text-gray-900 flex-1 mr-2" numberOfLines={1}>{review.title}</Text>
                                             {renderStars(review.rating)}
                                         </View>
-                                        <Text className="text-gray-500 text-[11px] leading-4 h-8" numberOfLines={2}>{review.postContents || review.comment}</Text>
+                                        <Text className="text-gray-500 text-[11px] leading-4 h-8" numberOfLines={2}>
+                                            {review.postContents || review.comment}
+                                        </Text>
                                     </View>
                                 </TouchableOpacity>
                             ))

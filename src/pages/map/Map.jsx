@@ -1,87 +1,98 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, TextInput, TouchableOpacity, Text, SafeAreaView } from "react-native";
+import { View, TextInput, TouchableOpacity, Text, SafeAreaView, ActivityIndicator, Alert } from "react-native";
 import { WebView } from "react-native-webview";
-import { Search } from "lucide-react-native";
+import { Search, ArrowLeft } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import axios from "axios";
 import { getKakaoMapHtml } from "./KakaoMapHtml";
 
-export default function Map({ navigation }) {
+const API_BASE_URL = "http://10.0.2.2:8082"; // 에뮬레이터 환경
+
+export default function Map() {
+    const router = useRouter();
     const webViewRef = useRef(null);
     const [searchKeyword, setSearchKeyword] = useState("");
     const [mountains, setMountains] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // 1. DB 데이터 가져오기 (네이티브는 절대경로 URL 권장)
     useEffect(() => {
-        const fetchMountainData = async () => {
+        const fetchMountains = async () => {
             try {
-                // 주의: localhost 대신 서버 IP 주소를 사용해야 에뮬레이터에서 작동합니다.
-                const response = await axios.get('http://YOUR_SERVER_IP:8080/api/mountains');
-                setMountains(response.data);
+                const res = await axios.get(`${API_BASE_URL}/api/mountains`);
+                setMountains(res.data);
             } catch (error) {
                 console.error("데이터 로드 실패:", error);
+            } finally {
+                setLoading(false);
             }
         };
-        fetchMountainData();
+        fetchMountains();
     }, []);
 
-    // 2. 검색 처리
     const handleSearch = () => {
-        const found = mountains.find(m => (m.NAME || m.name).includes(searchKeyword));
+        const found = mountains.find(m => (m.NAME || m.name || "").includes(searchKeyword));
         if (found && webViewRef.current) {
             webViewRef.current.postMessage(JSON.stringify({
                 type: 'PAN_TO',
                 lat: found.LAT || found.lat,
                 lng: found.LON || found.lon
             }));
+        } else {
+            Alert.alert("알림", "해당하는 산을 찾을 수 없습니다.");
         }
     };
 
-    // 3. 지도에서 보낸 메시지 수신 (마커 클릭 등)
     const onMessage = (event) => {
-        const data = JSON.parse(event.nativeEvent.data);
-        if (data.type === 'MARKER_CLICK') {
-            // 상세 페이지로 이동
-            navigation.navigate("MountainDetail", { id: data.id });
+        try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'MARKER_CLICK') {
+                router.push(`/mountain/${data.id}`);
+            }
+        } catch (e) {
+            console.error("메시지 수신 에러:", e);
         }
     };
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            {/* 상단 검색바 섹션 */}
-            <View className="p-4 z-20 bg-white shadow-md">
-                <View className="relative mb-3 flex-row items-center bg-gray-100 rounded-2xl px-4">
-                    <Search size={20} color="#9ca3af" />
+            {/* 상단 검색바 영역 */}
+            <View className="p-4 bg-white border-b border-gray-100 shadow-sm z-20 mt-6">
+                <View className="relative flex-row items-center bg-gray-100 rounded-2xl px-4 h-11">
+                    <Search size={18} color="#9ca3af" />
                     <TextInput
-                        className="flex-1 h-11 ml-2 text-sm"
+                        className="flex-1 ml-2 text-sm text-gray-800"
+                        placeholder="어떤 산을 찾으시나요?"
                         value={searchKeyword}
                         onChangeText={setSearchKeyword}
                         onSubmitEditing={handleSearch}
-                        placeholder="어떤 산을 찾으시나요?"
                         returnKeyType="search"
                     />
                 </View>
-
-                <View className="flex-row space-x-2">
+                {/* 태그 버튼들 */}
+                <View className="flex-row mt-3 gap-2">
                     {['산', '추천코스'].map(tag => (
-                        <TouchableOpacity
-                            key={tag}
-                            className="bg-white border border-gray-200 rounded-full px-4 py-2"
-                        >
-                            <Text className="text-xs font-bold text-gray-700">{tag}</Text>
+                        <TouchableOpacity key={tag} className="bg-white border border-gray-200 rounded-full px-4 py-1.5">
+                            <Text className="text-[11px] font-medium text-gray-600">{tag}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
             </View>
 
             {/* 지도 영역 */}
-            <View className="flex-1">
+            <View className="flex-1 relative">
+                {loading && (
+                    <View className="absolute inset-0 z-10 bg-white/50 justify-center items-center">
+                        <ActivityIndicator size="large" color="#15803d" />
+                    </View>
+                )}
+
                 <WebView
                     ref={webViewRef}
                     originWhitelist={['*']}
-                    source={{ html: getKakaoMapHtml("YOUR_KAKAO_JS_KEY") }}
+                    userAgent="Mozilla/5.0 (Android 13; Mobile; rv:109.0) Gecko/114.0 Firefox/114.0"
+                    source={{ html: getKakaoMapHtml("9c3cba91e55b9235299a3d7119d22830") }}
                     onMessage={onMessage}
                     onLoadEnd={() => {
-                        // 데이터가 로드된 후 지도에 전달
                         if (mountains.length > 0) {
                             webViewRef.current.postMessage(JSON.stringify({
                                 type: 'INIT_MAP',
@@ -89,6 +100,8 @@ export default function Map({ navigation }) {
                             }));
                         }
                     }}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
                 />
             </View>
         </SafeAreaView>
