@@ -6,7 +6,7 @@ import * as Clipboard from 'expo-clipboard'; // expo install expo-clipboard
 import axios from 'axios';
 
 // 이미지 경로는 프로젝트 구조에 맞춰 수정
-const neogulImg = require("../../assets/neogulGuide.jpeg");
+const neogulImg = require("../../../assets/images/neogulGuide.jpeg");
 
 const ChatBot = ({ visible, onClose }) => {
     const navigation = useNavigation();

@@ -80,7 +80,7 @@ const NeogulGuide = ({ onOpen }) => {
 
                     {/* 너굴 가이드 이미지 (좌우 반전) */}
                     <Image
-                        source={require("../assets/neogulGuide.jpeg")} // 로컬 경로 확인 필요
+                        source={require("../../assets/images/neogulGuide.jpeg")}
                         className="w-16 h-16 rounded-full border-4 border-white shadow-md object-cover"
                         style={{ transform: [{ scaleX: -1 }] }}
                     />

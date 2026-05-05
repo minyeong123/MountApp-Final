@@ -14,7 +14,7 @@ import axios from "axios";
 import MountainCourse from "./MountainCourse";
 import MountainWeather from "./MountainWeather";
 
-const LOGO_IMAGE = require("../../assets/logo.png");
+const LOGO_IMAGE = require("../../../assets/images/bukhan_c1.jpg");
 const { width } = Dimensions.get("window");
 const API_BASE_URL = "http://10.0.2.2:8082";
 
@@ -37,7 +37,7 @@ export default function MountainDetail() {
         const fetchMountainDetail = async () => {
             try {
                 const token = await AsyncStorage.getItem("jwtToken");
-                const res = await axios.get(`${API_BASE_URL}/api/mountains/${id}`, {
+                const res = await axios.get(`${API_BASE_URL}/api/mountains/${id}`, {    
                     headers: token ? { Authorization: `Bearer ${token}` } : {}
                 });
                 setMountain(res.data);

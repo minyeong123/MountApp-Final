@@ -11,7 +11,7 @@ import DisasterBanner from "../../../components/DisasterBanner";
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 
-const logo = require("../../assets/logo.png");
+const logo = require("../../../assets/images/logo.png");
 
 // 🔥 디버깅용 서버 주소 설정 함수
 const getDebuggingUrl = () => {

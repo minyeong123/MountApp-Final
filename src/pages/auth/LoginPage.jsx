@@ -11,6 +11,8 @@ const logo = require("../../../assets/images/logo.png");
 const kakaoIcon = require("../../../assets/images/kakao.png");
 const naverIcon = require("../../../assets/images/naver.png");
 const googleIcon = require("../../../assets/images/google.png");
+const facebookIcon = require("../../../assets/images/facebook.png");
+const githubIcon = require("../../../assets/images/github.png");
 
 export default function LoginPage() {
     const router = useRouter();
@@ -126,10 +128,12 @@ export default function LoginPage() {
                             <View className="flex-1 h-[1px] bg-gray-200" />
                         </View>
 
-                        <View className="flex-row justify-center space-x-5">
-                            <SocialIcon color="#FEE500" icon={kakaoIcon} />
-                            <SocialIcon color="#03C75A" icon={naverIcon} />
-                            <SocialIcon color="#FFFFFF" icon={googleIcon} border />
+                        <View className="flex-row justify-center gap-5">
+                            <SocialIcon color="#FEE500" icon={kakaoIcon} className="w-12 h-12" />
+                            <SocialIcon color="#03C75A" icon={naverIcon} className="w-12 h-12 " imageScale="w-[40%] h-[40%]" />
+                            <SocialIcon color="#FFFFFF" icon={googleIcon} className="w-12 h-12 border border-gray-200 shadow-sm" />
+                            <SocialIcon color="#24292E" icon={githubIcon} className="w-12 h-12" />
+                            <SocialIcon color="#1877F2" icon={facebookIcon} className="w-12 h-12" />
                         </View>
                     </View>
 
@@ -148,13 +152,14 @@ export default function LoginPage() {
 }
 
 // 소셜 버튼 내부 컴포넌트
-function SocialIcon({ color, icon, border }) {
+function SocialIcon({ color, icon, className = "", imageScale = "w-[55%] h-[55%]" }) {
     return (
         <TouchableOpacity
             style={{ backgroundColor: color }}
-            className={`w-11 h-11 rounded-full items-center justify-center shadow-sm ${border ? 'border border-gray-100' : ''}`}
+            className={`rounded-full items-center justify-center shadow-sm ${className}`}
         >
-            <Image source={icon} className="w-6 h-6" resizeMode="contain" />
+            {/* 다른 애들은 기본값 55%로 나오고, 네이버만 위에서 넘겨준 40%로 작아집니다 */}
+            <Image source={icon} className={imageScale} resizeMode="contain" />
         </TouchableOpacity>
     );
 }

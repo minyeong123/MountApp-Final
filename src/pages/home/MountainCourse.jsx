@@ -1,100 +1,51 @@
 import React, { useEffect, useState, useRef } from "react";
+import { View, Text, Image, ScrollView, TouchableOpacity, Modal, Dimensions, Alert } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { WebView } from "react-native-webview";
+import * as Location from "expo-location";
 import {
-    View, Text, Image, ScrollView, TouchableOpacity,
-    StyleSheet, Modal, Dimensions
-} from "react-native";
-import { useLocalSearchParams } from "expo-router"; // 앱용 파라미터 훅
-import { Footprints, Timer, X, LocateFixed, Play, Pause } from "lucide-react-native";
+    Footprints, Timer, X, LocateFixed, Play, Pause,
+    Mountain, Flame, Heart, MapPin
+} from "lucide-react-native";
 
-const { width } = Dimensions.get("window");
+import { MOUNTAIN_DATA, IMG_BUKHAN_C1 } from "./mountainData";
 
-// 🔥 백엔드 이미지 주소 연동 (로컬 이미지의 경우)
-const getDebuggingUrl = () => {
-    return "http://10.0.2.2:8082"; // [1] 에뮬레이터용
-    // return "http://mountapp.mooo.com:8082"; // [3] DDNS 외부망 테스트용
+const { width, height } = Dimensions.get("window");
+
+const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const API_BASE_URL = getDebuggingUrl();
-const getSafeImageSource = (path) => {
-    if (!path) return { uri: "https://placehold.co/400x300?text=No+Image" };
-    if (path.startsWith("http")) return { uri: path };
-    return { uri: `${API_BASE_URL}${path}` };
-};
-
-// 🗺️ 하드코딩된 산 코스 데이터 (기존과 100% 동일)
-const MOUNTAIN_DATA = {
-    "1": [
-        {
-            id: 11, name: "북한산 백운대 코스", difficulty: "어려움", uptime: "2시간 30분", distance: "4.2km",
-            description: "북한산의 최고봉 백운대를 오르는 코스로, 인수봉과 만경대의 절경을 감상할 수 있습니다.",
-            imageUrl: "/images/bukhan_c1.jpg",
-        },
-        {
-            id: 12, name: "원효봉 코스", difficulty: "쉬움", uptime: "1시간 30분", distance: "2.7km",
-            description: "북한산 입문 코스로 추천하며, 원효봉 정상에서 바라보는 백운대와 만경대의 파노라마 뷰가 일품입니다.",
-            imageUrl: "/images/bukhan_c2.jpg",
-        }
-    ],
-    "2": [
-        {
-            id: 13, name: "울산바위 코스", difficulty: "보통", uptime: "2시간", distance: "3.8km",
-            description: "설악산의 상징과도 같은 기암괴석 울산바위에 오르는 대표적인 코스입니다.",
-            imageUrl: "https://placehold.co/400x300?text=Seorak+Ulsan",
-        },
-        {
-            id: 14, name: "비룡폭포(토왕성폭포) 코스", difficulty: "쉬움", uptime: "1시간 30분", distance: "2.4km",
-            description: "시원한 물줄기와 함께 굽이치는 계곡을 따라 걷는 힐링 코스입니다.",
-            imageUrl: "https://placehold.co/400x300?text=Seorak+Falls",
-        }
-    ],
-    "3": [
-        {
-            id: 15, name: "성판악 코스", difficulty: "어려움", uptime: "4시간 30분", distance: "9.6km",
-            description: "백록담 정상을 정복할 수 있는 가장 대중적인 코스로, 완만한 경사가 길게 이어집니다.",
-            imageUrl: "https://placehold.co/400x300?text=Halla+Seongpanak",
-        },
-        {
-            id: 16, name: "영실 코스", difficulty: "보통", uptime: "2시간 30분", distance: "5.8km",
-            description: "영실기암의 절경을 감상하며 윗세오름까지 오르는 가장 아름다운 코스입니다.",
-            imageUrl: "https://placehold.co/400x300?text=Halla+Yeongsil",
-        }
-    ],
-    "4": [
-        {
-            id: 17, name: "천왕봉 최단 코스 (중산리)", difficulty: "어려움", uptime: "5시간", distance: "10.4km",
-            description: "지리산 최고봉 천왕봉을 가장 빠르게 만날 수 있지만, 가파른 경사가 특징입니다.",
-            imageUrl: "https://placehold.co/400x300?text=Jiri+Cheonwang",
-        },
-        {
-            id: 18, name: "노고단 코스", difficulty: "쉬움", uptime: "1시간 30분", distance: "3.2km",
-            description: "성삼재에서 시작하여 누구나 쉽게 구름 위의 노고단 정원을 만날 수 있습니다.",
-            imageUrl: "https://placehold.co/400x300?text=Jiri+Nogodan",
-        }
-    ],
-    "5": [
-        {
-            id: 19, name: "내장사 힐링 코스", difficulty: "쉬움", uptime: "1시간", distance: "3.0km",
-            description: "단풍 터널을 지나 내장사까지 평탄하게 걷는 가족형 힐링 코스입니다.",
-            imageUrl: "https://placehold.co/400x300?text=Naejang+Temple",
-        },
-        {
-            id: 20, name: "신선봉 대표 코스", difficulty: "보통", uptime: "3시간 30분", distance: "6.5km",
-            description: "내장산의 최고봉인 신선봉에 올라 8개 봉우리를 조망할 수 있는 코스입니다.",
-            imageUrl: "https://placehold.co/400x300?text=Naejang+Peak",
-        }
-    ]
-};
-
-export default function MountainCourse({ trails: propsTrails }) {
+export default function MountainCourse() {
     const { id } = useLocalSearchParams();
     const [selectedTrail, setSelectedTrail] = useState(null);
     const [isNavigating, setIsNavigating] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [seconds, setSeconds] = useState(0);
-    const [workoutData, setWorkoutData] = useState({ time: "00:00:00", distance: "0.0" });
 
-    // 전달받은 trails가 없으면 하드코딩 데이터 사용
-    const trails = propsTrails && propsTrails.length > 0 ? propsTrails : (MOUNTAIN_DATA[id] || []);
+    const [workoutData, setWorkoutData] = useState({ time: "00:00:00", distance: 0 });
+    const [extraMetrics, setExtraMetrics] = useState({ altitude: 0, calories: 0, heartRate: 0 });
+
+    const webViewRef = useRef(null);
+    const locationSubscriptionRef = useRef(null);
+    const lastLocationRef = useRef(null);
+
+    // 💡 클로저 문제를 방지하기 위해 최신 이동 거리를 ref로 관리
+    const distanceRef = useRef(0);
+
+    const trails = MOUNTAIN_DATA[id] || [];
+
+    const getTrailImage = (trail) => {
+        if (trail.imageSource) return trail.imageSource;
+        if (trail.imageUrl) return { uri: trail.imageUrl };
+        return IMG_BUKHAN_C1;
+    };
 
     const formatTime = (totalSeconds) => {
         const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
@@ -103,25 +54,156 @@ export default function MountainCourse({ trails: propsTrails }) {
         return `${h}:${m}:${s}`;
     };
 
-    // 실시간 위치 추적 관련
-    const moveToCurrentLocation = () => {
-        console.log("현재 위치로 이동 (앱 WebView 연동 필요)");
+    // 💡 안전하게 문자열에서 숫자만 추출하는 함수 (e.g., "3.5km" -> 3.5)
+    const parseDistanceNumber = (distStr) => {
+        if (!distStr) return 0;
+        const match = String(distStr).match(/[\d.]+/);
+        return match ? parseFloat(match[0]) : 0;
     };
 
-    const startNavigation = () => {
-        setIsNavigating(true);
-        setIsPaused(false);
+    const generateMapHtml = (trail) => {
+        if (!trail || !trail.path || trail.path.length === 0) return "";
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+                <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9c3cba91e55b9235299a3d7119d22830&autoload=false"></script>
+                <style>
+                    html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #f3f4f6; }
+                    .label { padding: 4px 10px; background: #10b981; color: white; border-radius: 12px; font-size: 10px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+                    .label.end { background: #ef4444; }
+                    .pulse-marker { width: 16px; height: 16px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); position: relative; }
+                </style>
+            </head>
+            <body>
+                <div id="map"></div>
+                <script>
+                    kakao.maps.load(function() {
+                        var container = document.getElementById('map');
+                        var options = {
+                            center: new kakao.maps.LatLng(${trail.path[0].lat}, ${trail.path[0].lng}),
+                            level: 4
+                        };
+                        var map = new kakao.maps.Map(container, options);
+                        window.mapInstance = map;
+
+                        var linePath = [
+                            ${trail.path.map(p => `new kakao.maps.LatLng(${p.lat}, ${p.lng})`).join(',')}
+                        ];
+                        var polyline = new kakao.maps.Polyline({
+                            path: linePath, strokeWeight: 6, strokeColor: '#059669', strokeOpacity: 0.85, map: map
+                        });
+
+                        new kakao.maps.CustomOverlay({ position: linePath[0], content: '<div class="label">출발</div>', yAnchor: 2.5, map: map });
+                        new kakao.maps.CustomOverlay({ position: linePath[linePath.length - 1], content: '<div class="label end">도착</div>', yAnchor: 2.5, map: map });
+
+                        var bounds = new kakao.maps.LatLngBounds();
+                        linePath.forEach(function(p) { bounds.extend(p); });
+                        map.setBounds(bounds);
+
+                        window.userMarker = null;
+                        
+                        var handleMessage = function(event) {
+                            try {
+                                var data = JSON.parse(event.data);
+                                var loc = new kakao.maps.LatLng(data.lat, data.lng);
+                                if (window.userMarker) { window.userMarker.setMap(null); }
+                                window.userMarker = new kakao.maps.CustomOverlay({ position: loc, content: '<div class="pulse-marker"></div>', map: map });
+                                if (data.panTo) { map.panTo(loc); }
+                            } catch(e) { console.error(e); }
+                        };
+                        
+                        document.addEventListener("message", handleMessage);
+                        window.addEventListener("message", handleMessage);
+                    });
+                </script>
+            </body>
+            </html>
+        `;
     };
 
-    const togglePause = () => setIsPaused(!isPaused);
-
-    const stopNavigation = () => {
-        setIsNavigating(false);
-        setIsPaused(false);
-        setSeconds(0);
+    const moveToCurrentLocation = async () => {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        webViewRef.current?.postMessage(JSON.stringify({ lat: loc.coords.latitude, lng: loc.coords.longitude, panTo: true }));
     };
 
-    // 타이머
+    // 위치 추적 로직 시스템 개편
+    useEffect(() => {
+        let isMounted = true;
+
+        const startTracking = async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert("권한 거부", "위치 추적을 위해 GPS 권한이 필요합니다.");
+                setIsNavigating(false);
+                return;
+            }
+
+            if (locationSubscriptionRef.current) {
+                locationSubscriptionRef.current.remove();
+                locationSubscriptionRef.current = null;
+            }
+
+            try {
+                locationSubscriptionRef.current = await Location.watchPositionAsync(
+                    { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5 },
+                    (location) => {
+                        if (!isMounted || !isNavigating || isPaused) return;
+
+                        const { latitude, longitude, altitude } = location.coords;
+                        webViewRef.current?.postMessage(JSON.stringify({ lat: latitude, lng: longitude, panTo: false }));
+
+                        if (lastLocationRef.current) {
+                            const dist = getDistance(lastLocationRef.current.lat, lastLocationRef.current.lng, latitude, longitude);
+
+                            // 5m 이상 이동했을 때만 업데이트
+                            if (dist > 0.005) {
+                                const nextDistance = parseFloat((distanceRef.current + dist).toFixed(2));
+                                distanceRef.current = nextDistance; // Ref 먼저 업데이트
+
+                                setWorkoutData(prev => ({ ...prev, distance: nextDistance }));
+                                setExtraMetrics(m => ({
+                                    ...m,
+                                    altitude: altitude ? Math.round(altitude) : m.altitude,
+                                    calories: Math.floor(nextDistance * 75), // 최신화된 내역으로 안전하게 계산
+                                    heartRate: Math.floor(Math.random() * (145 - 120) + 120)
+                                }));
+                                lastLocationRef.current = { lat: latitude, lng: longitude };
+                            }
+                        } else {
+                            lastLocationRef.current = { lat: latitude, lng: longitude };
+                            setExtraMetrics(m => ({ ...m, altitude: altitude ? Math.round(altitude) : m.altitude }));
+                        }
+                    }
+                );
+            } catch (error) {
+                console.error("Tracking Error: ", error);
+            }
+        };
+
+        if (isNavigating && !isPaused) {
+            startTracking();
+        } else {
+            if (locationSubscriptionRef.current) {
+                locationSubscriptionRef.current.remove();
+                locationSubscriptionRef.current = null;
+            }
+        }
+
+        return () => {
+            isMounted = false;
+            if (locationSubscriptionRef.current) {
+                locationSubscriptionRef.current.remove();
+                locationSubscriptionRef.current = null;
+            }
+        };
+    }, [isNavigating, isPaused]);
+
+    // 타이머 기능
     useEffect(() => {
         let timer = null;
         if (isNavigating && !isPaused) {
@@ -133,138 +215,150 @@ export default function MountainCourse({ trails: propsTrails }) {
     }, [isNavigating, isPaused]);
 
     useEffect(() => {
-        setWorkoutData((prev) => ({ time: formatTime(seconds), distance: prev.distance }));
+        setWorkoutData((prev) => ({ ...prev, time: formatTime(seconds) }));
     }, [seconds]);
 
+    const startNavigation = () => {
+        distanceRef.current = 0;
+        lastLocationRef.current = null;
+        setIsNavigating(true);
+        setIsPaused(false);
+    };
+
+    const togglePause = () => setIsPaused(!isPaused);
+
+    const stopNavigation = () => {
+        setIsNavigating(false);
+        setIsPaused(false);
+        setSeconds(0);
+        distanceRef.current = 0;
+        setWorkoutData({ time: "00:00:00", distance: 0 });
+        setExtraMetrics({ altitude: 0, calories: 0, heartRate: 0 });
+        lastLocationRef.current = null;
+        if (locationSubscriptionRef.current) {
+            locationSubscriptionRef.current.remove();
+            locationSubscriptionRef.current = null;
+        }
+    };
 
     return (
-        <View style={styles.container}>
-            {/* 상단 타이틀 및 코스 리스트 */}
-            <View style={styles.headerRow}>
-                <Text style={styles.headerTitle}>추천 탐방 코스</Text>
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{trails.length}개</Text>
+        <View className="flex-1 bg-white px-4 pt-4">
+            <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-lg font-bold text-gray-900">추천 탐방 코스</Text>
+                <View className="bg-white px-2.5 py-1 rounded-full border border-gray-100 shadow-sm">
+                    <Text className="text-xs text-gray-500 font-bold">{trails.length}개</Text>
                 </View>
             </View>
 
-            <View style={styles.listContainer}>
+            <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
                 {trails.map((trail, index) => (
-                    <TouchableOpacity
-                        key={index}
-                        style={styles.card}
-                        onPress={() => setSelectedTrail(trail)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.cardImageContainer}>
-                            <Image source={getSafeImageSource(trail.imageUrl)} style={styles.cardImage} resizeMode="cover" />
-                        </View>
-                        <View style={styles.cardContent}>
+                    <TouchableOpacity key={trail.id || index} onPress={() => setSelectedTrail(trail)} className="flex-row bg-white rounded-2xl h-28 overflow-hidden border border-gray-100 mb-3 shadow-sm" activeOpacity={0.7}>
+                        <Image
+                            source={getTrailImage(trail)}
+                            style={{ width: 112, height: '100%' }}
+                            className="bg-gray-200"
+                            resizeMode="cover"
+                        />
+                        <View className="flex-1 p-3 justify-between">
                             <View>
-                                <Text style={styles.cardTitle} numberOfLines={1}>{trail.name}</Text>
-                                <Text style={styles.cardDesc} numberOfLines={2}>{trail.description}</Text>
+                                <Text className="font-bold text-gray-800 text-sm" numberOfLines={1}>{trail.name}</Text>
+                                <Text className="text-xs text-gray-500 mt-0.5 leading-4" numberOfLines={2}>{trail.description}</Text>
                             </View>
-                            <View style={styles.cardMeta}>
-                                <View style={styles.metaItem}>
-                                    <Timer size={13} color="#16a34a" />
-                                    <Text style={styles.metaText}>{trail.uptime}</Text>
-                                </View>
-                                <View style={styles.metaItem}>
-                                    <Footprints size={13} color="#059669" />
-                                    <Text style={styles.metaText}>{trail.distance}</Text>
-                                </View>
+                            <View className="flex-row gap-3">
+                                <View className="flex-row items-center gap-1"><Timer size={13} color="#16a34a" /><Text className="text-[11px] text-gray-600 font-semibold">{trail.uptime}</Text></View>
+                                <View className="flex-row items-center gap-1"><Footprints size={13} color="#059669" /><Text className="text-[11px] text-gray-600 font-semibold">{trail.distance}</Text></View>
                             </View>
                         </View>
                     </TouchableOpacity>
                 ))}
-            </View>
+            </ScrollView>
 
-            {/* 🔥 길 찾기 모달 (기존 애니메이션 모달 완벽 재현) */}
-            <Modal
-                visible={!!selectedTrail}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => { setSelectedTrail(null); stopNavigation(); }}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        {/* 헤더 */}
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{selectedTrail?.name}</Text>
-                            <TouchableOpacity onPress={() => { setSelectedTrail(null); stopNavigation(); }} style={styles.closeButton}>
-                                <X size={24} color="#6b7280" />
-                            </TouchableOpacity>
+            <Modal visible={!!selectedTrail} transparent animationType="slide" onRequestClose={() => { setSelectedTrail(null); stopNavigation(); }}>
+                <View className="flex-1 bg-black/40 justify-end">
+                    <View className="bg-white rounded-t-[32px] max-h-[92%] overflow-hidden">
+                        <View className="flex-row justify-between items-center p-5 border-b border-gray-100">
+                            <Text className="font-bold text-gray-900 text-lg">{selectedTrail?.name}</Text>
+                            <TouchableOpacity onPress={() => { setSelectedTrail(null); stopNavigation(); }} className="p-1.5 bg-gray-100 rounded-full"><X size={20} color="#6b7280" /></TouchableOpacity>
                         </View>
 
-                        {/* 지도 영역 (앱에서는 WebView로 대체해야 함) */}
-                        <View style={styles.mapArea}>
-                            <View style={styles.mapPlaceholder}>
-                                <Text style={styles.mapPlaceholderText}>
-                                    🗺️ 카카오맵 지도 영역{'\n'}
-                                    (앱 연동을 위해 react-native-webview 설치가 필요합니다)
-                                </Text>
-                            </View>
+                        <View style={{ width: '100%', height: height * 0.4 }} className="bg-gray-50 relative">
+                            {selectedTrail && (
+                                <WebView
+                                    ref={webViewRef}
+                                    originWhitelist={['*']}
+                                    source={{ html: generateMapHtml(selectedTrail) }}
+                                    style={{ flex: 1 }}
+                                    javaScriptEnabled
+                                    domStorageEnabled
+                                    mixedContentMode="always"
+                                />
+                            )}
                             {isNavigating && (
-                                <TouchableOpacity style={styles.locateButton} onPress={moveToCurrentLocation}>
-                                    <LocateFixed size={20} color="#059669" />
-                                </TouchableOpacity>
+                                <TouchableOpacity onPress={moveToCurrentLocation} className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-lg" style={{ elevation: 4 }}><LocateFixed size={20} color="#059669" /></TouchableOpacity>
                             )}
                         </View>
 
-                        {/* 하단 정보 및 컨트롤 */}
-                        <View style={styles.controlArea}>
+                        <View className="p-6">
                             {!isNavigating ? (
                                 <>
-                                    <View style={styles.infoBoxes}>
-                                        <View style={[styles.infoBox, { backgroundColor: '#f0fdf4' }]}>
-                                            <View style={[styles.iconWrapper, { backgroundColor: '#15803d' }]}>
-                                                <Timer size={16} color="white" />
-                                            </View>
+                                    <View className="flex-row gap-3 mb-4">
+                                        <View className="flex-1 bg-green-50 p-4 rounded-2xl flex-row items-center gap-3">
+                                            <View className="bg-green-700 p-2 rounded-lg"><Timer size={16} color="white" /></View>
                                             <View>
-                                                <Text style={[styles.infoBoxLabel, { color: '#15803d' }]}>예상 시간</Text>
-                                                <Text style={styles.infoBoxValue}>{selectedTrail?.uptime}</Text>
+                                                <Text className="text-[10px] text-green-700 font-bold uppercase">예상 시간</Text>
+                                                <Text className="font-bold text-gray-800 text-sm">{selectedTrail?.uptime}</Text>
                                             </View>
                                         </View>
-                                        <View style={[styles.infoBox, { backgroundColor: '#ecfdf5' }]}>
-                                            <View style={[styles.iconWrapper, { backgroundColor: '#047857' }]}>
-                                                <Footprints size={16} color="white" />
-                                            </View>
+                                        <View className="flex-1 bg-emerald-50 p-4 rounded-2xl flex-row items-center gap-3">
+                                            <View className="bg-emerald-700 p-2 rounded-lg"><Footprints size={16} color="white" /></View>
                                             <View>
-                                                <Text style={[styles.infoBoxLabel, { color: '#047857' }]}>총 거리</Text>
-                                                <Text style={styles.infoBoxValue}>{selectedTrail?.distance}</Text>
+                                                <Text className="text-[10px] text-emerald-700 font-bold uppercase">총 거리</Text>
+                                                <Text className="font-bold text-gray-800 text-sm">{selectedTrail?.distance}</Text>
                                             </View>
                                         </View>
                                     </View>
-                                    <TouchableOpacity style={styles.startButton} onPress={startNavigation} activeOpacity={0.8}>
-                                        <Text style={styles.startButtonText}>길 찾기 시작</Text>
-                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={startNavigation} className="w-full py-4 bg-emerald-950 rounded-xl items-center shadow-md" activeOpacity={0.8}><Text className="color-white font-bold text-base">길 찾기 시작</Text></TouchableOpacity>
                                 </>
                             ) : (
-                                <View style={styles.navigatingContainer}>
-                                    <View style={styles.activeInfoBoxes}>
-                                        <View style={styles.timeBox}>
-                                            <Text style={styles.timeBoxLabel}>현재 운동 시간</Text>
-                                            <Text style={styles.timeBoxValue}>{workoutData.time}</Text>
+                                <View className="gap-4">
+                                    <View className="flex-row gap-3">
+                                        <View className="flex-1 bg-emerald-900 p-4 rounded-2xl shadow-sm">
+                                            <Text className="text-[10px] text-emerald-300 font-bold uppercase mb-1">⏱️ 운동 시간</Text>
+                                            <Text className="text-xl font-black color-white">{workoutData.time}</Text>
                                         </View>
-                                        <View style={styles.distBox}>
-                                            <Text style={styles.distBoxLabel}>이동 거리</Text>
-                                            <Text style={styles.distBoxValue}>{workoutData.distance} <Text style={{fontSize: 14}}>km</Text></Text>
+                                        <View className="flex-1 bg-white border-2 border-emerald-900 p-4 rounded-2xl">
+                                            <Text className="text-[10px] text-gray-400 font-bold uppercase mb-1">👣 이동 거리</Text>
+                                            <Text className="text-xl font-black color-emerald-900">{workoutData.distance}<Text className="text-xs text-gray-400 ml-0.5 font-medium">km</Text></Text>
                                         </View>
                                     </View>
-                                    <View style={styles.actionButtons}>
-                                        <TouchableOpacity
-                                            style={[styles.pauseButton, isPaused ? styles.resumeButton : null]}
-                                            onPress={togglePause}
-                                            activeOpacity={0.8}
-                                        >
-                                            {isPaused ? (
-                                                <><Play size={18} color="white" /><Text style={styles.resumeButtonText}>재시작</Text></>
-                                            ) : (
-                                                <><Pause size={18} color="#6b7280" /><Text style={styles.pauseButtonText}>일시정지</Text></>
-                                            )}
+
+                                    <View className="flex-row justify-between">
+                                        <View className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100 items-center mx-1">
+                                            <Mountain size={14} color="#3b82f6" /><Text className="text-[9px] text-gray-400 font-bold uppercase mt-1">고도</Text>
+                                            <Text className="text-xs font-bold text-gray-800 mt-0.5">{extraMetrics.altitude}m</Text>
+                                        </View>
+                                        <View className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100 items-center mx-1">
+                                            <Flame size={14} color="#f97316" /><Text className="text-[9px] text-gray-400 font-bold uppercase mt-1">칼로리</Text>
+                                            <Text className="text-xs font-bold text-gray-800 mt-0.5">{extraMetrics.calories}kcal</Text>
+                                        </View>
+                                        <View className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100 items-center mx-1">
+                                            <Heart size={14} color="#ef4444" /><Text className="text-[9px] text-gray-400 font-bold uppercase mt-1">심박수</Text>
+                                            <Text className="text-xs font-bold text-gray-800 mt-0.5">{extraMetrics.heartRate}bpm</Text>
+                                        </View>
+                                        <View className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100 items-center mx-1">
+                                            <MapPin size={14} color="#10b981" /><Text className="text-[9px] text-gray-400 font-bold uppercase mt-1">남은거리</Text>
+                                            {/* 💡 parseDistanceNumber를 사용해 NaN 에러 완벽 차단 */}
+                                            <Text className="text-xs font-bold text-gray-800 mt-0.5">
+                                                {Math.max(0, (parseDistanceNumber(selectedTrail?.distance) - workoutData.distance)).toFixed(1)}km
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View className="flex-row gap-3 mt-2">
+                                        <TouchableOpacity onPress={togglePause} className={`flex-1 py-4 rounded-xl flex-row items-center justify-center gap-2 ${isPaused ? 'bg-amber-500' : 'bg-gray-100'}`} activeOpacity={0.8}>
+                                            {isPaused ? <><Play size={18} color="white" /><Text className="color-white font-bold">재시작</Text></> : <><Pause size={18} color="#6b7280" /><Text className="color-gray-500 font-bold">일시정지</Text></>}
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={styles.stopButton} onPress={stopNavigation} activeOpacity={0.8}>
-                                            <Text style={styles.stopButtonText}>운동 종료</Text>
-                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={stopNavigation} className="flex-[1.5] py-4 bg-red-500 rounded-xl items-center justify-center shadow-sm" activeOpacity={0.8}><Text className="color-white font-bold">운동 종료</Text></TouchableOpacity>
                                     </View>
                                 </View>
                             )}
@@ -275,62 +369,3 @@ export default function MountainCourse({ trails: propsTrails }) {
         </View>
     );
 }
-
-// 🔥 기존 Tailwind CSS 디자인을 완벽히 구현한 StyleSheet
-const styles = StyleSheet.create({
-    container: { padding: 16, backgroundColor: 'white', minHeight: 400 },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-    badge: { backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-    badgeText: { fontSize: 12, color: '#6b7280', fontWeight: 'bold' },
-    listContainer: { gap: 12 },
-    card: { flexDirection: 'row', backgroundColor: 'white', borderRadius: 12, height: 110, overflow: 'hidden', borderWidth: 1, borderColor: '#f3f4f6' },
-    cardImageContainer: { width: 110, height: '100%', backgroundColor: '#e5e7eb' },
-    cardImage: { width: '100%', height: '100%' },
-    cardContent: { flex: 1, padding: 12, justifyContent: 'space-between' },
-    cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#1f2937' },
-    cardDesc: { fontSize: 12, color: '#6b7280', marginTop: 4, lineHeight: 18 },
-    cardMeta: { flexDirection: 'row', gap: 12 },
-    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    metaText: { fontSize: 11, color: '#4b5563', fontWeight: '600' },
-
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: 'white', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%', overflow: 'hidden' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-    closeButton: { padding: 6, backgroundColor: '#f3f4f6', borderRadius: 999 },
-
-    mapArea: { width: '100%', height: 320, backgroundColor: '#f3f4f6', position: 'relative' },
-    mapPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-    mapPlaceholderText: { textAlign: 'center', color: '#9ca3af', fontSize: 14, lineHeight: 22 },
-    locateButton: { position: 'absolute', bottom: 16, right: 16, backgroundColor: 'white', padding: 12, borderRadius: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 4 },
-
-    controlArea: { padding: 24, gap: 16 },
-    infoBoxes: { flexDirection: 'row', gap: 16 },
-    infoBox: { flex: 1, padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-    iconWrapper: { padding: 8, borderRadius: 8 },
-    infoBoxLabel: { fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 2 },
-    infoBoxValue: { fontSize: 14, fontWeight: 'bold', color: '#1f2937' },
-
-    startButton: { width: '100%', paddingVertical: 16, backgroundColor: '#064e3b', borderRadius: 12, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
-    startButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-
-    navigatingContainer: { gap: 16 },
-    activeInfoBoxes: { flexDirection: 'row', gap: 16 },
-    timeBox: { flex: 1, backgroundColor: '#064e3b', padding: 20, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
-    timeBoxLabel: { fontSize: 11, color: '#a7f3d0', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 4 },
-    timeBoxValue: { fontSize: 24, fontWeight: '900', color: 'white', letterSpacing: 1 },
-
-    distBox: { flex: 1, backgroundColor: 'white', borderWidth: 2, borderColor: '#064e3b', padding: 20, borderRadius: 20 },
-    distBoxLabel: { fontSize: 11, color: '#9ca3af', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 4 },
-    distBoxValue: { fontSize: 24, fontWeight: '900', color: '#064e3b' },
-
-    actionButtons: { flexDirection: 'row', gap: 12 },
-    pauseButton: { flex: 1, paddingVertical: 16, backgroundColor: '#f3f4f6', borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-    resumeButton: { backgroundColor: '#f59e0b' },
-    pauseButtonText: { color: '#6b7280', fontWeight: 'bold', fontSize: 15 },
-    resumeButtonText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
-
-    stopButton: { flex: 2, paddingVertical: 16, backgroundColor: '#ef4444', borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
-    stopButtonText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
-});
