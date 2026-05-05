@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Image, TouchableOpacity, TextInput, Alert, Modal, SafeAreaView, ActivityIndicator } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router"; // Expo Router용으로 변경
-import { EllipsisVertical, Edit, Trash2, Star, User as UserIcon, Heart } from "lucide-react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { EllipsisVertical, Edit, Trash2, Star, User as UserIcon, Heart, StarHalf } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-// 🔥 백엔드 서버 주소 (Community와 동일하게 10.0.2.2 권장)
+// 🔥 백엔드 서버 주소 (에뮬레이터 권장)
 const BACKEND_URL = "http://10.0.2.2:8082";
 
+// 🔥 웹 버전의 로컬/외부/상대경로 완벽 대응 로직 이식
 const getSafeImageUrl = (path) => {
     if (!path) return null;
-    if (path.startsWith("http")) return path;
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+        return path;
+    }
     const filename = path.split('\\').pop().split('/').pop();
     return `${BACKEND_URL}/uploads/${filename}`;
 };
@@ -34,7 +37,7 @@ const ProfileAvatar = ({ imagePath, nickname, size = "w-11 h-11" }) => {
 
 export default function DetailPage() {
     const router = useRouter();
-    const { id } = useLocalSearchParams(); // Expo Router에서 파라미터 가져오기
+    const { id } = useLocalSearchParams();
 
     const [item, setItem] = useState(null);
     const [comments, setComments] = useState([]);
@@ -52,21 +55,23 @@ export default function DetailPage() {
             try {
                 const token = await AsyncStorage.getItem("jwtToken");
                 const response = await axios.get(`${BACKEND_URL}/api/posts/${id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
 
                 setItem(response.data);
                 setLikeCount(response.data.likeCount || 0);
 
                 if (token) {
-                    const statusRes = await axios.get(`${BACKEND_URL}/api/likes/${id}/status`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                    setLiked(statusRes.data);
+                    try {
+                        const statusRes = await axios.get(`${BACKEND_URL}/api/likes/${id}/status`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
+                        setLiked(statusRes.data);
+                    } catch (e) { /* ignore */ }
                 }
 
                 const commentsRes = await axios.get(`${BACKEND_URL}/api/posts/${id}/comments`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
                 setComments(commentsRes.data);
             } catch (error) {
@@ -80,10 +85,20 @@ export default function DetailPage() {
         fetchDetail();
     }, [id]);
 
+    // 🔥 웹 버전의 예외 처리(빈 값 방지, 로그인 여부 확인) 로직 이식
     const handleCommentSubmit = async () => {
-        if (!commentContent.trim()) return;
+        if (!commentContent.trim()) {
+            Alert.alert("알림", "댓글 내용을 입력해주세요.");
+            return;
+        }
+
         try {
             const token = await AsyncStorage.getItem("jwtToken");
+            if (!token) {
+                Alert.alert("알림", "로그인이 필요합니다.");
+                return;
+            }
+
             const currentUserId = await AsyncStorage.getItem("userId");
 
             await axios.post(`${BACKEND_URL}/api/posts/${id}/comments`, {
@@ -92,25 +107,35 @@ export default function DetailPage() {
             }, { headers: { Authorization: `Bearer ${token}` } });
 
             setCommentContent("");
+            Alert.alert("알림", "댓글이 등록되었습니다.");
+
             const commentsRes = await axios.get(`${BACKEND_URL}/api/posts/${id}/comments`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setComments(commentsRes.data);
         } catch (error) {
-            Alert.alert("실패", "댓글 등록에 실패했습니다.");
+            console.error("댓글 등록 실패:", error);
+            Alert.alert("실패", "댓글 등록 중 오류가 발생했습니다.");
         }
     };
 
+    // 🔥 웹 버전의 명시적인 로그인 여부 확인 로직 이식
     const onLikeClick = async () => {
         try {
             const token = await AsyncStorage.getItem("jwtToken");
+            if (!token) {
+                Alert.alert("알림", "로그인이 필요합니다.");
+                return;
+            }
+
             const response = await axios.post(`${BACKEND_URL}/api/likes/${id}`, {}, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setLiked(response.data.liked);
             setLikeCount(response.data.count);
         } catch (error) {
-            Alert.alert("오류", "로그인이 필요합니다.");
+            console.error("좋아요 오류:", error);
+            Alert.alert("오류", "오류가 발생했습니다.");
         }
     };
 
@@ -120,19 +145,22 @@ export default function DetailPage() {
             await axios.delete(`${BACKEND_URL}/api/posts/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+            Alert.alert("알림", "삭제되었습니다.");
             setShowDeleteModal(false);
-            router.back();
+            router.push("/community");
         } catch (error) {
-            Alert.alert("실패", "삭제 권한이 없습니다.");
+            console.error("삭제 실패:", error);
+            Alert.alert("실패", "삭제 권한이 없거나 오류가 발생했습니다.");
         }
     };
 
     if (loading) return <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#6366f1" /></View>;
-    if (!item) return null;
+    if (!item) return <View className="flex-1 justify-center items-center"><Text className="text-gray-500 font-bold">데이터를 찾을 수 없습니다.</Text></View>;
 
     const isReview = (item?.rating && item.rating > 0);
 
     const renderStars = (score) => {
+        if (!score) return null;
         const fullStars = Math.floor(score);
         const hasHalf = score % 1 !== 0;
         return (
@@ -173,7 +201,15 @@ export default function DetailPage() {
                             className="px-4 py-3 border-b border-gray-50 flex-row items-center space-x-2"
                             onPress={() => {
                                 setMenuOpen(false);
-                                router.push({ pathname: "/community/newpost", params: { isEdit: "true", postData: JSON.stringify(item) } });
+                                // 🔥 수정 페이지 이동 시, 리뷰인지 게시글인지 명시하는 type 파라미터 이식 완료
+                                router.push({
+                                    pathname: "/community/newpost",
+                                    params: {
+                                        isEdit: "true",
+                                        postData: JSON.stringify(item),
+                                        type: isReview ? "review" : "post"
+                                    }
+                                });
                             }}
                         >
                             <Edit size={16} color="#4b5563" />
@@ -189,13 +225,13 @@ export default function DetailPage() {
                     </View>
                 )}
 
-                {/* 3. 작성자 및 별점 정보 (여기가 191번 줄 근처입니다) */}
+                {/* 3. 작성자 및 별점 정보 */}
                 <View className="flex-row justify-between items-center mt-6">
                     <View className="flex-row items-center space-x-3">
                         <ProfileAvatar imagePath={item.profileImage} nickname={item.nickname} />
                         <View>
                             <Text className="font-bold text-gray-800">{item.nickname || "익명"}</Text>
-                            <Text className="text-xs text-gray-500">{item.postdate || "날짜 정보 없음"}</Text>
+                            <Text className="text-xs text-gray-500">{item.postdate || "날짜 미상"}</Text>
                         </View>
                     </View>
                     {isReview ? renderStars(item.rating) : null}
@@ -243,22 +279,25 @@ export default function DetailPage() {
                         </TouchableOpacity>
                     </View>
 
-                    {comments.map((comment) => (
-                        <View key={comment.commentId} className="flex-row space-x-3 mb-5 bg-gray-50 p-4 rounded-2xl">
-                            <ProfileAvatar imagePath={comment.profileImage} nickname={comment.nickname} size="w-10 h-10" />
-                            <View className="flex-1">
-                                <View className="flex-row justify-between items-center mb-1">
-                                    <Text className="font-bold text-gray-900 text-sm">{comment.nickname}</Text>
-                                    <Text className="text-[10px] text-gray-400">{comment.commentDate}</Text>
+                    {comments.length === 0 ? (
+                        <Text className="text-gray-500 text-center py-4">아직 댓글이 없습니다.</Text>
+                    ) : (
+                        comments.map((comment) => (
+                            <View key={comment.commentId} className="flex-row space-x-3 mb-5 bg-gray-50 p-4 rounded-2xl">
+                                <ProfileAvatar imagePath={comment.profileImage} nickname={comment.nickname} size="w-10 h-10" />
+                                <View className="flex-1">
+                                    <View className="flex-row justify-between items-center mb-1">
+                                        <Text className="font-bold text-gray-900 text-sm">{comment.nickname}</Text>
+                                        <Text className="text-[10px] text-gray-400">{comment.commentDate}</Text>
+                                    </View>
+                                    <Text className="text-gray-600 text-[14px] leading-5">{comment.commentContents}</Text>
                                 </View>
-                                <Text className="text-gray-600 text-[14px] leading-5">{comment.commentContents}</Text>
                             </View>
-                        </View>
-                    ))}
+                        ))
+                    )}
                 </View>
             </ScrollView>
 
-            {/* 삭제 확인 모달은 ScrollView 밖에 두는 것이 좋습니다 */}
             <Modal visible={showDeleteModal} transparent animationType="fade">
                 <View className="flex-1 bg-black/50 justify-center items-center px-10">
                     <View className="bg-white p-6 rounded-2xl w-full">
@@ -275,4 +314,5 @@ export default function DetailPage() {
                 </View>
             </Modal>
         </SafeAreaView>
-    );}
+    );
+}

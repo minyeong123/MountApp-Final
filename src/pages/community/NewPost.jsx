@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, Modal, SafeAreaView } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useRouter, useLocalSearchParams } from "expo-router"; // Expo Router 사용
 import { Star, StarHalf, X, Camera } from "lucide-react-native";
-import * as ImagePicker from 'expo-image-picker'; // npx expo install expo-image-picker
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const BACKEND_URL = "http://mountapp.mooo.com:8082";
+// 🔥 백엔드 서버 주소 (에뮬레이터 권장)
+const BACKEND_URL = "http://10.0.2.2:8082";
 const categories = ["산", "등산용품", "맛집", "숙소"];
 
 // 별점 컴포넌트 (모바일 최적화: 0.5단위 탭 지원)
@@ -32,16 +33,33 @@ function StarRating({ rating, setRating }) {
 }
 
 export default function NewPost() {
-    const navigation = useNavigation();
-    const route = useRoute();
-    const { isEdit = false, postData = {}, type: initialType = "post" } = route.params || {};
+    const router = useRouter();
+    const params = useLocalSearchParams();
 
-    const [title, setTitle] = useState(isEdit ? postData.title : "");
-    const [content, setContent] = useState(isEdit ? (postData.comment || postData.postContents) : "");
-    const [images, setImages] = useState([]); // {uri, name, type} 형태의 객체 배열
+    // 🔥 Expo Router 파라미터 파싱 (DetailPage에서 보낸 데이터 해석)
+    const isEdit = params.isEdit === "true";
+    const postData = params.postData ? JSON.parse(params.postData) : {};
+    const initialType = params.type || "post";
+
+    // 기존 이미지 URL 변환 함수
+    const getSafeImageUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith("http")) return path;
+        const filename = path.split('\\').pop().split('/').pop();
+        return `${BACKEND_URL}/uploads/${filename}`;
+    };
+
+    // States 매핑 (수정 모드일 경우 기존 데이터 자동 채움)
+    const [title, setTitle] = useState(isEdit ? postData.title || "" : "");
+    const [content, setContent] = useState(isEdit ? (postData.comment || postData.postContents || postData.content || "") : "");
     const [rating, setRating] = useState(isEdit && postData.rating ? postData.rating : 0);
     const [category, setCategory] = useState(isEdit && postData.category ? postData.category : categories[0]);
     const [searchKeyword, setSearchKeyword] = useState(isEdit && postData.searchKeyword ? postData.searchKeyword : "");
+
+    // 이미지 처리 States
+    const [images, setImages] = useState([]);
+    const [existingImage, setExistingImage] = useState(isEdit ? (postData.imagePath || postData.image) : null);
+
     const [showModal, setShowModal] = useState(false);
 
     // 이미지 선택 핸들러
@@ -66,6 +84,7 @@ export default function NewPost() {
         setImages(images.filter((_, i) => i !== index));
     };
 
+    // 🔥 서버 전송 핸들러 (웹 로직 완벽 이식)
     const handleSubmit = async () => {
         const token = await AsyncStorage.getItem("jwtToken");
         if (!token) {
@@ -73,13 +92,20 @@ export default function NewPost() {
             return;
         }
 
+        // 웹 버전에 있는 유효성 검증 로직 이식
         if (initialType === "review" && rating === 0) {
             Alert.alert("알림", "별점을 입력해주세요!");
             return;
         }
 
+        if (initialType === "review" && category === "산" && !searchKeyword.includes("산")) {
+            Alert.alert("알림", "산 이름을 입력해주세요!");
+            return;
+        }
+
         const formData = new FormData();
         const postDto = {
+            id: isEdit ? postData.id : null, // 수정 모드일 때 ID 포함
             title,
             content,
             rating: initialType === "review" ? rating : 0,
@@ -87,7 +113,7 @@ export default function NewPost() {
             searchKeyword: category === "산" ? searchKeyword : null
         };
 
-        // 네이티브 FormData 구성
+        // RN용 FormData Json 첨부 방식
         formData.append("data", {
             string: JSON.stringify(postDto),
             type: 'application/json',
@@ -110,6 +136,7 @@ export default function NewPost() {
             });
             setShowModal(true);
         } catch (error) {
+            console.error("업로드 에러:", error);
             Alert.alert("에러", "게시글 등록에 실패했습니다.");
         }
     };
@@ -118,12 +145,12 @@ export default function NewPost() {
         <SafeAreaView className="flex-1 bg-gray-50">
             <ScrollView className="p-4">
                 {/* 헤더 */}
-                <View className="flex-row items-center bg-white p-3 rounded-xl border border-gray-100 mb-4">
-                    <TouchableOpacity onPress={() => navigation.goBack()} className="pr-4">
+                <View className="flex-row items-center bg-white p-3 rounded-xl border border-gray-100 mb-4 mt-6">
+                    <TouchableOpacity onPress={() => router.back()} className="pr-4 p-1">
                         <Text className="text-gray-600 font-bold">뒤로</Text>
                     </TouchableOpacity>
                     <Text className="flex-1 text-center font-bold text-lg">
-                        {isEdit ? "글 수정" : initialType === "review" ? "리뷰 작성" : "게시글 작성"}
+                        {isEdit ? (initialType === "review" ? "리뷰 수정" : "게시글 수정") : (initialType === "review" ? "리뷰 작성" : "게시글 작성")}
                     </Text>
                     <View className="w-10" />
                 </View>
@@ -135,7 +162,7 @@ export default function NewPost() {
                             {categories.map((cat) => (
                                 <TouchableOpacity
                                     key={cat}
-                                    onPress={() => setCategory(cat)}
+                                    onPress={() => { setCategory(cat); setSearchKeyword(""); }}
                                     className={`px-4 py-2 rounded-full border ${category === cat ? "bg-blue-500 border-blue-500" : "bg-white border-gray-200"}`}
                                 >
                                     <Text className={`text-xs font-bold ${category === cat ? "text-white" : "text-gray-700"}`}>{cat}</Text>
@@ -192,8 +219,21 @@ export default function NewPost() {
 
                 {/* 이미지 미리보기 */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row space-x-2 pb-10">
+                    {/* 🔥 기존 수정 시 저장되어 있던 이미지 미리보기 */}
+                    {existingImage && (
+                        <View className="relative w-24 h-24 border border-gray-200 rounded-xl overflow-hidden mr-2">
+                            <Image source={{ uri: getSafeImageUrl(existingImage) }} className="w-full h-full" />
+                            <TouchableOpacity
+                                onPress={() => setExistingImage(null)}
+                                className="absolute top-1 right-1 bg-black/50 rounded-full p-1"
+                            >
+                                <X size={14} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     {images.map((img, i) => (
-                        <View key={i} className="relative w-24 h-24 border border-gray-200 rounded-xl overflow-hidden">
+                        <View key={i} className="relative w-24 h-24 border border-gray-200 rounded-xl overflow-hidden mr-2">
                             <Image source={{ uri: img.uri }} className="w-full h-full" />
                             <TouchableOpacity
                                 onPress={() => handleRemoveImage(i)}
@@ -211,10 +251,10 @@ export default function NewPost() {
                 <View className="flex-1 bg-black/40 justify-center items-center px-10">
                     <View className="bg-white p-8 rounded-3xl w-full items-center">
                         <Text className="text-2xl font-bold mb-2">{isEdit ? "수정 완료!" : "작성 완료!"}</Text>
-                        <Text className="text-gray-500 mb-8 text-center">성공적으로 등록되었습니다.🌲</Text>
+                        <Text className="text-gray-500 mb-8 text-center">성공적으로 처리되었습니다.🌲</Text>
                         <TouchableOpacity
                             className="bg-blue-600 w-full py-4 rounded-2xl"
-                            onPress={() => { setShowModal(false); navigation.navigate("Community"); }}
+                            onPress={() => { setShowModal(false); router.push("/community"); }}
                         >
                             <Text className="text-white text-center font-bold text-lg">확인</Text>
                         </TouchableOpacity>
