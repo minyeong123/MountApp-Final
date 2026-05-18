@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Modal, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+// 🔥 1. 네비게이션 대신 Expo Router의 useRouter를 가져옵니다.
+import { useRouter } from 'expo-router';
 import { X, Send, Calendar, MapPin, Gauge, Copy, Edit3, ArrowRight } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import axios from 'axios';
 
 const neogulImg = require("../../../assets/images/neogulGuide.jpeg");
 
-// 🔥 플랫폼(안드로이드/iOS)에 맞게 서버 주소 자동 설정
 const API_BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8082' : 'http://localhost:8082';
 
 const ChatBot = ({ visible, onClose }) => {
-    const navigation = useNavigation();
+    // 🔥 2. router 객체 생성
+    const router = useRouter();
     const scrollRef = useRef(null);
 
     // --- 상태 관리 ---
@@ -35,7 +36,6 @@ const ChatBot = ({ visible, onClose }) => {
         return now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true });
     };
 
-    // 앱 환경에 맞게 이미지 URL을 파싱하는 함수
     const getSafeImageSource = (path) => {
         if (!path || typeof path !== 'string') return { uri: "https://placehold.co/100" };
         if (path.startsWith("http") && !path.includes("8082")) return { uri: path };
@@ -43,7 +43,6 @@ const ChatBot = ({ visible, onClose }) => {
         return { uri: `${API_BASE_URL}/uploads/${filename}` };
     };
 
-    // 산 목록 가져오기
     useEffect(() => {
         const fetchMountains = async () => {
             try {
@@ -68,7 +67,6 @@ const ChatBot = ({ visible, onClose }) => {
         return `${datePart}${regionPart}${levelPart}${pureText}`;
     };
 
-    // ✅ 기능 1: 메시지 전송
     const handleSendMessage = async () => {
         if (!inputText.trim() || isLoading) return;
 
@@ -105,7 +103,6 @@ const ChatBot = ({ visible, onClose }) => {
         setEditInputText(fullText);
     };
 
-    // ✅ 기능 2: 메시지 수정 및 재요청
     const handleUpdateMessage = async (index) => {
         if (!editInputText.trim()) return;
 
@@ -156,13 +153,11 @@ const ChatBot = ({ visible, onClose }) => {
         }
     };
 
-    // 클립보드 복사
     const handleCopy = async (text) => {
         await Clipboard.setStringAsync(text);
         Alert.alert("알림", "메시지가 복사되었습니다.");
     };
 
-    // 옵션 순환 로직 (앱에서 드롭다운 대용)
     const cycleOption = (current, options, setter) => {
         const index = options.indexOf(current);
         const nextIndex = (index + 1) % options.length;
@@ -253,10 +248,13 @@ const ChatBot = ({ visible, onClose }) => {
                                     </View>
                                 </View>
 
-                                {/* 추천 산 카드 */}
+                                {/* 🔥 에러 해결의 핵심! router.push와 백틱(₩)을 사용한 URL 경로 이동 */}
                                 {msg.role === 'bot' && msg.relatedMountain && (
                                     <TouchableOpacity
-                                        onPress={() => { onClose(); navigation.navigate('MountainDetail', { id: msg.relatedMountain.id }); }}
+                                        onPress={() => {
+                                            onClose();
+                                            router.push(`/mountain/${msg.relatedMountain.id}`);
+                                        }}
                                         className="ml-12 mt-3 w-60 bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex-row items-center space-x-3"
                                     >
                                         <Image
