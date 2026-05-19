@@ -2,7 +2,7 @@ import React, { useState } from "react";
 // 1. useSegments 임포트 추가 (현재 경로 확인용)
 import { Tabs, useSegments } from "expo-router";
 import { Text, StyleSheet, Platform, View } from "react-native";
-import { House, Map, UserSearch, MessageSquareText, CircleUserRound } from "lucide-react-native";
+import { House, Map, UserSearch, MessageSquareText, CircleUserRound,HeartPulse } from "lucide-react-native";
 import "../../global.css";
 
 // 컴포넌트 임포트
@@ -54,12 +54,21 @@ export default function TabLayout() {
                         tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>메이트</Text>,
                     }}
                 />
+                />
                 <Tabs.Screen
                     name="community"
                     options={{
                         title: "커뮤니티",
                         tabBarIcon: ({ color }) => <MessageSquareText size={24} color={color} />,
                         tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>커뮤니티</Text>,
+                    }}
+                />
+                <Tabs.Screen
+                    name="health"
+                    options={{
+                        title: "건강",
+                        tabBarIcon: ({ color }) => <HeartPulse size={24} color={color} />,
+                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>건강</Text>,
                     }}
                 />
                 <Tabs.Screen

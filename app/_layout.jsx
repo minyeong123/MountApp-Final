@@ -9,13 +9,16 @@ export default function RootLayout() {
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
-            {/* 1. 최상위 index(로그인)를 첫 화면으로 명시합니다. */}
+            {/* 1. 로그인/진입 화면 */}
             <Stack.Screen name="index" options={{ headerShown: false }} />
 
-            {/* 2. 그 다음 탭 화면을 등록합니다. */}
+            {/* 2. 메인 탭 화면들 */}
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-            {/* 3. 모달 및 기타 화면 */}
+            {/* 💡 3. 여기에 mountain/[id] 동적 라우트를 꼭 등록해 줍니다! */}
+            <Stack.Screen name="mountain/[id]" options={{ headerShown: false }} />
+
+            {/* 4. 공지사항 모달 */}
             <Stack.Screen name="modal" options={{ presentation: 'modal', headerShown: true, title: '공지사항' }} />
         </Stack>
     );

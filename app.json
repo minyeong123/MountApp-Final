@@ -4,24 +4,19 @@
     "slug": "MountApp-Final",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/logo.png",
-    "scheme": "mountappfinal",
+    "icon": "./assets/images/logo.png",
+    "scheme": "mountapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./src/assets/logo.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true,
-      "package": "com.mountapp.final"
+      "package": "com.mountapp.app"
     },
     "web": {
       "output": "static",
@@ -32,7 +27,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
