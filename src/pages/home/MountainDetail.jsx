@@ -26,9 +26,6 @@ export default function MountainDetail() {
     const [tab, setTab] = useState("home");
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-    // ✨ id 타입을 안전하게 문자열로 고정 (배열로 들어올 경우 예외 처리)
-    const safeId = Array.isArray(id) ? id[0] : id;
-
     const getSafeImageSource = (path) => {
         if (!path || typeof path !== 'string') return LOGO_IMAGE;
         if (path.startsWith("http") && !path.includes("8082") && !path.includes("mountapp.mooo.com")) return { uri: path };
@@ -40,7 +37,7 @@ export default function MountainDetail() {
         const fetchMountainDetail = async () => {
             try {
                 const token = await AsyncStorage.getItem("jwtToken");
-                const res = await axios.get(`${API_BASE_URL}/api/mountains/${safeId}`, {
+                const res = await axios.get(`${API_BASE_URL}/api/mountains/${id}`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {}
                 });
                 setMountain(res.data);
@@ -50,8 +47,8 @@ export default function MountainDetail() {
                 setLoading(false);
             }
         };
-        if (safeId) fetchMountainDetail();
-    }, [safeId]);
+        if (id) fetchMountainDetail();
+    }, [id]);
 
     if (loading) return (
         <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
@@ -67,13 +64,8 @@ export default function MountainDetail() {
             className="flex-1 bg-white"
             style={{ paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}
         >
-            <ScrollView
-                className="flex-1 bg-white"
-                stickyHeaderIndices={[3]}
-                // ✨removeClippedSubviews 속성을 제거하거나 false로 두어 탭 전환 시 컴포넌트 뷰 유실을 방지합니다.
-                removeClippedSubviews={false}
-            >
-                {/* [0] 헤더 영역 */}
+            <ScrollView className="flex-1 bg-white" stickyHeaderIndices={[3]} nestedScrollEnabled={true} >
+                {/* 헤더 영역 */}
                 <View className="flex-row items-center justify-center p-4 bg-white relative">
                     <TouchableOpacity onPress={() => router.back()} className="absolute left-4 p-2">
                         <ArrowLeft size={24} color="#374151" />
@@ -81,7 +73,7 @@ export default function MountainDetail() {
                     <Text className="text-xl font-bold text-gray-900">{mountain?.name}</Text>
                 </View>
 
-                {/* [1] 이미지 스와이프 영역 */}
+                {/* 이미지 스와이프 영역 (웹 UI 그대로 재현) */}
                 <View className="relative w-full h-[250px] bg-gray-100">
                     {images.length > 0 ? (
                         <>
@@ -104,8 +96,9 @@ export default function MountainDetail() {
                                     />
                                 ))}
                             </ScrollView>
+                            {/* 좌우 화살표 버튼 (웹 UI 스타일) */}
                             {images.length > 1 && (
-                                <View className="absolute w-full h-full flex-row justify-between items-center px-2" pointerEvents="none">
+                                <View className="absolute w-full h-full flex-row justify-between items-center px-2">
                                     <View className="bg-black/20 rounded-full p-1"><ChevronLeft size={24} color="white" /></View>
                                     <View className="bg-black/20 rounded-full p-1"><ChevronRight size={24} color="white" /></View>
                                 </View>
@@ -116,14 +109,14 @@ export default function MountainDetail() {
                     )}
                 </View>
 
-                {/* [2] 산 설명 */}
+                {/* 산 설명 (Border-b-4 스타일 유지) */}
                 <View className="px-5 py-6 border-b-[6px] border-gray-100">
                     <Text className="text-gray-700 text-[15px] leading-6">
                         {mountain?.description}
                     </Text>
                 </View>
 
-                {/* [3] 탭 버튼 영역 */}
+                {/* 탭 버튼 영역 (Sticky 설정됨) */}
                 <View className="flex-row justify-around bg-white border-b border-gray-200">
                     {["home", "course", "weather", "notice"].map((t) => (
                         <TouchableOpacity
@@ -138,7 +131,7 @@ export default function MountainDetail() {
                     ))}
                 </View>
 
-                {/* [4] 탭 내용 영역 */}
+                {/* 탭 내용 */}
                 <View className="p-5">
                     {tab === "home" && (
                         <View className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
@@ -180,9 +173,11 @@ export default function MountainDetail() {
                         </View>
                     )}
 
-                    {/* ✨ 정제된 safeId를 전달하여 안전성 확보 */}
-                    {tab === "course" && <MountainCourse id={safeId} />}
-
+                    {tab === "course" && (
+                        <View style={{ flex: 1, minHeight: 400 }}>
+                            <MountainCourse id={id} />
+                        </View>
+                    )}
                     {tab === "weather" && <MountainWeather mountain={mountain} />}
                 </View>
             </ScrollView>
