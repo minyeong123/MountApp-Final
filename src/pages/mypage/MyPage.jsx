@@ -4,7 +4,7 @@ import { ChevronRight, FileText, Heart, MessageSquare, ThumbsUp, User as UserIco
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { sendMessage } from 'react-native-wear-connectivity';
 // [추가] 등산 기록 카드 컴포넌트
 const HikingRecordCard = ({ record }) => (
     <View className="bg-white border border-gray-100 rounded-2xl p-4 mb-3 shadow-sm">
@@ -200,17 +200,19 @@ export default function MyPage() {
                 onPress: async () => {
                     await AsyncStorage.removeItem("jwtToken");
                     router.replace('/');
+                    sendMessage(
+                                {
+                                    path: '/clear_jwt_token', // 삭제 전용 경로
+                                    data: 'logout'
+                                },
+                                (match) => console.log("✅ 워치 토큰 삭제 신호 전송 성공!"),
+                                (err) => console.error("❌ 워치 신호 전송 실패:", err)
+                            );
                 }
-            sendMessage(
-                    {
-                        path: '/clear_jwt_token', // 삭제 전용 경로
-                        data: 'logout'
-                    },
-                    (match) => console.log("✅ 워치 토큰 삭제 신호 전송 성공!"),
-                    (err) => console.error("❌ 워치 신호 전송 실패:", err)
-                );
+
             }
         ]);
+
     };
 
     const filteredPosts = myPosts.filter(post => activeTab === 'ALL' || post.type === activeTab);
