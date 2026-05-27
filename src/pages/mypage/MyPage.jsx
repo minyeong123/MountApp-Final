@@ -201,6 +201,14 @@ export default function MyPage() {
                     await AsyncStorage.removeItem("jwtToken");
                     router.replace('/');
                 }
+            sendMessage(
+                    {
+                        path: '/clear_jwt_token', // 삭제 전용 경로
+                        data: 'logout'
+                    },
+                    (match) => console.log("✅ 워치 토큰 삭제 신호 전송 성공!"),
+                    (err) => console.error("❌ 워치 신호 전송 실패:", err)
+                );
             }
         ]);
     };
