@@ -4,6 +4,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { View, Text, Image, ScrollView, TouchableOpacity, Modal, Dimensions, Alert } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {
     Footprints, Timer, X, LocateFixed, Play, Pause,
     Mountain, Flame, Heart, MapPin
@@ -12,6 +14,8 @@ import {
 import { MOUNTAIN_DATA, IMG_BUKHAN_C1 } from "./mountainData";
 
 const { width, height } = Dimensions.get("window");
+
+const BACKEND_URL = "http://10.0.2.2:8082";
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
@@ -115,8 +119,32 @@ export default function MountainCourse({ id }) {
         webViewRef.current?.postMessage(JSON.stringify({ lat: loc.coords.latitude, lng: loc.coords.longitude, panTo: true }));
     };
 
+    const fetchLatestBiometrics = async () => {
+        try {
+            const token = await AsyncStorage.getItem("jwtToken");
+            const response = await fetch(`${BACKEND_URL}/api/health/biometrics/latest`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setExtraMetrics(prev => ({
+                    ...prev,
+                    heartRate: data.heartRate || prev.heartRate,
+                }));
+            }
+        } catch (error) {
+            console.error("서버에서 생체 데이터를 불러오지 못했습니다:", error);
+        }
+    };
+
     useEffect(() => {
         let isMounted = true;
+
         const startTracking = async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
@@ -134,18 +162,21 @@ export default function MountainCourse({ id }) {
                     (location) => {
                         if (!isMounted || !isNavigatingRef.current || isPausedRef.current) return;
                         const { latitude, longitude, altitude } = location.coords;
+
                         webViewRef.current?.postMessage(JSON.stringify({ lat: latitude, lng: longitude, panTo: false }));
+
                         if (lastLocationRef.current) {
                             const dist = getDistance(lastLocationRef.current.lat, lastLocationRef.current.lng, latitude, longitude);
                             if (dist > 0.005) {
                                 const nextDistance = parseFloat((distanceRef.current + dist).toFixed(2));
                                 distanceRef.current = nextDistance;
+
                                 setWorkoutData(prev => ({ ...prev, distance: nextDistance }));
+
                                 setExtraMetrics(m => ({
                                     ...m,
                                     altitude: altitude ? Math.round(altitude) : m.altitude,
-                                    calories: Math.floor(nextDistance * 75),
-                                    heartRate: Math.floor(Math.random() * (145 - 120) + 120)
+                                    calories: Math.floor(nextDistance * 75)
                                 }));
                                 lastLocationRef.current = { lat: latitude, lng: longitude };
                             }
@@ -159,6 +190,7 @@ export default function MountainCourse({ id }) {
                 console.error("Tracking Error: ", error);
             }
         };
+
         if (isNavigating && !isPaused) {
             startTracking();
         } else {
@@ -167,6 +199,7 @@ export default function MountainCourse({ id }) {
                 locationSubscriptionRef.current = null;
             }
         }
+
         return () => {
             isMounted = false;
             if (locationSubscriptionRef.current) {
@@ -178,10 +211,20 @@ export default function MountainCourse({ id }) {
 
     useEffect(() => {
         let timer = null;
+        let dataInterval = null;
+
         if (isNavigating && !isPaused) {
             timer = setInterval(() => setSeconds((prev) => prev + 1), 1000);
+            fetchLatestBiometrics();
+            dataInterval = setInterval(() => {
+                fetchLatestBiometrics();
+            }, 2000);
         }
-        return () => clearInterval(timer);
+
+        return () => {
+            if (timer) clearInterval(timer);
+            if (dataInterval) clearInterval(dataInterval);
+        };
     }, [isNavigating, isPaused]);
 
     useEffect(() => {
