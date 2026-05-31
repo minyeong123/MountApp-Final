@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User, Lock, Eye, EyeOff } from "lucide-react-native"; // 아이콘 추가
 import axios from "axios";
-
+import { sendMessage } from 'react-native-wear-connectivity';
 const logo = require("../../../assets/images/logo.png");
 
 // 소셜 아이콘 (이미지가 있다면 경로를 수정하세요)
@@ -41,10 +41,19 @@ export default function LoginPage() {
                 if (response.status === 200) {
                     // 🔥 1. 백엔드에서 주는 토큰과 권한(role)을 모두 가져옵니다.
                     const token = response.data.token;
+                    console.log("서버에서 받은 토큰값:", token);
                     const userRole = response.data.role;
 
                     // 🔥 2. 휴대폰 저장소(AsyncStorage)에 둘 다 저장합니다!
                     await AsyncStorage.setItem("jwtToken", token);
+                    sendMessage(
+                                    {
+                                        path: '/send_jwt_token', // 워치가 기다리고 있는 바로 그 경로
+                                        data: token              // 보낼 내용 (JWT 토큰)
+                                    },
+                                    (match) => console.log("✅ 워치로 토큰 전송 성공!", match),
+                                    (err) => console.error("❌ 워치로 토큰 전송 실패:", err)
+                                );
                     if (userRole) {
                         await AsyncStorage.setItem("role", String(userRole));
                     }
