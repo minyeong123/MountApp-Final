@@ -29,46 +29,46 @@ export default function LoginPage() {
     }, []);
 
     const handleLogin = async () => {
-            if (!userid || !password) {
-                Alert.alert("알림", "아이디와 비밀번호를 모두 입력해주세요.");
-                return;
-            }
+        if (!userid || !password) {
+            Alert.alert("알림", "아이디와 비밀번호를 모두 입력해주세요.");
+            return;
+        }
 
-            const SERVER_URL = "http://10.0.2.2:8082";
-            try {
-                const response = await axios.post(`${SERVER_URL}/api/auth/login`, { userid, password });
+        const SERVER_URL = "http://10.0.2.2:8082";
+        try {
+            const response = await axios.post(`${SERVER_URL}/api/auth/login`, { userid, password });
 
-                if (response.status === 200) {
-                    // 🔥 1. 백엔드에서 주는 토큰과 권한(role)을 모두 가져옵니다.
-                    const token = response.data.token;
-                    console.log("서버에서 받은 토큰값:", token);
-                    const userRole = response.data.role;
+            if (response.status === 200) {
+                // 🔥 1. 백엔드에서 주는 토큰과 권한(role)을 모두 가져옵니다.
+                const token = response.data.token;
+                console.log("서버에서 받은 토큰값:", token);
+                const userRole = response.data.role;
 
-                    // 🔥 2. 휴대폰 저장소(AsyncStorage)에 둘 다 저장합니다!
-                    await AsyncStorage.setItem("jwtToken", token);
-                    sendMessage(
-                                    {
-                                        path: '/send_jwt_token', // 워치가 기다리고 있는 바로 그 경로
-                                        data: token              // 보낼 내용 (JWT 토큰)
-                                    },
-                                    (match) => console.log("✅ 워치로 토큰 전송 성공!", match),
-                                    (err) => console.error("❌ 워치로 토큰 전송 실패:", err)
-                                );
-                    if (userRole) {
-                        await AsyncStorage.setItem("role", String(userRole));
-                    }
-
-                    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-                    Alert.alert("성공", "로그인 되었습니다!", [
-                        { text: "확인", onPress: () => router.replace("/(tabs)/home") }
-                    ]);
+                // 🔥 2. 휴대폰 저장소(AsyncStorage)에 둘 다 저장합니다!
+                await AsyncStorage.setItem("jwtToken", token);
+                sendMessage(
+                    {
+                        path: '/send_jwt_token', // 워치가 기다리고 있는 바로 그 경로
+                        data: token              // 보낼 내용 (JWT 토큰)
+                    },
+                    (match) => console.log("✅ 워치로 토큰 전송 성공!", match),
+                    (err) => console.error("❌ 워치로 토큰 전송 실패:", err)
+                );
+                if (userRole) {
+                    await AsyncStorage.setItem("role", String(userRole));
                 }
-            } catch (error) {
-                console.error(error);
-                Alert.alert("로그인 실패", "아이디 또는 비밀번호가 일치하지 않습니다.");
+
+                axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+                Alert.alert("성공", "로그인 되었습니다!", [
+                    { text: "확인", onPress: () => router.replace("/(tabs)/home") }
+                ]);
             }
-        };
+        } catch (error) {
+            console.error(error);
+            Alert.alert("로그인 실패", "아이디 또는 비밀번호가 일치하지 않습니다.");
+        }
+    };
 
     return (
         <SafeAreaView className="flex-1 bg-white">
@@ -168,7 +168,7 @@ export default function LoginPage() {
     );
 }
 
-// 소셜 버튼 내부 컴포넌트
+// 소셜 버튼 내부 컴포넌트12
 function SocialIcon({ color, icon, className = "", imageScale = "w-[55%] h-[55%]" }) {
     return (
         <TouchableOpacity

@@ -201,13 +201,13 @@ export default function MyPage() {
                     await AsyncStorage.removeItem("jwtToken");
                     router.replace('/');
                     sendMessage(
-                                {
-                                    path: '/clear_jwt_token', // 삭제 전용 경로
-                                    data: 'logout'
-                                },
-                                (match) => console.log("✅ 워치 토큰 삭제 신호 전송 성공!"),
-                                (err) => console.error("❌ 워치 신호 전송 실패:", err)
-                            );
+                        {
+                            path: '/clear_jwt_token', // 삭제 전용 경로
+                            data: 'logout'
+                        },
+                        (match) => console.log("✅ 워치 토큰 삭제 신호 전송 성공!"),
+                        (err) => console.error("❌ 워치 신호 전송 실패:", err)
+                    );
                 }
 
             }
@@ -358,7 +358,7 @@ export default function MyPage() {
                     )}
                 </View>
 
-                {/* 하단 시스템 메뉴 */}
+                {/* 하단 시스템12 메뉴 */}
                 <View className="px-5 mb-10 gap-3">
                     <TouchableOpacity onPress={handleLogout} className="w-full py-4 bg-white border border-gray-200 rounded-2xl items-center">
                         <Text className="font-bold text-gray-700">로그아웃</Text>
