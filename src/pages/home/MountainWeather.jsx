@@ -119,15 +119,36 @@ export default function MountainWeather({ mountain }) {
   );
 }
 
-// 🔥 기존 Tailwind CSS 디자인을 완벽히 재현한 StyleSheet
 const styles = StyleSheet.create({
     container: { backgroundColor: '#f9fafb', padding: 20, borderRadius: 12, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, gap: 16, marginVertical: 10, marginHorizontal: 2 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
     title: { fontSize: 18, fontWeight: 'bold', color: '#1f2937' },
     subtitle: { fontSize: 11, color: '#6b7280' },
-    scrollContainer: { paddingBottom: 4 },
-    scrollContent: { gap: 8, paddingRight: 10 },
-    dayCard: { width: 110, alignItems: 'center', padding: 12, backgroundColor: 'white', borderRadius: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, marginRight: 8 },
+
+    // 1. 스크롤 뷰가 컨테이너 밖으로 살짝 나가서 스크롤되도록 마진을 깎고 패딩을 줍니다. (그림자 잘림 방지)
+    scrollContainer: {
+        marginHorizontal: -20,
+    },
+    // 2. 내부 패딩을 주어 첫 번째 카드와 마지막 카드가 정렬이 맞게 하고, gap 대신 마진을 쓰도록 변경합니다.
+    scrollContent: {
+        paddingHorizontal: 20,
+        paddingVertical: 8, // 위아래 그림자도 잘리지 않게 여유 공간 확보
+    },
+    // 3. marginRight를 고정값으로 주고, 폭(width)을 115 정도로 살짝 늘려 글씨 잘림을 예방합니다.
+    dayCard: {
+        width: 115,
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: 'white',
+        borderRadius: 12,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        marginRight: 12
+    },
+
     dateText: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 4 },
     weatherIcon: { width: 50, height: 50, marginVertical: 4 },
     tempRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },

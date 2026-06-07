@@ -164,9 +164,9 @@ export default function MountainCourse({ id }) {
                         if (!isMounted || !isNavigatingRef.current || isPausedRef.current) return;
                         const { latitude, longitude, altitude } = location.coords;
 
-                        // 🔥 1. 워치로 현재 폰의 위치(위도, 경도, 고도)를 실시간 전송!12
+                        // 🔥 1. 워치로 현재 폰의 위치(위도, 경도, 고도)를 실시간 전송!
                         const gpsPayload = JSON.stringify({ lat: latitude, lng: longitude, alt: altitude || 0 });
-                        sendMessage({ path: '/gps_data', data: gpsPayload }, () => {}, () => {});
+                        // sendMessage({ path: '/gps_data', data: gpsPayload }, () => {}, () => {});
 
                         webViewRef.current?.postMessage(JSON.stringify({ lat: latitude, lng: longitude, panTo: false }));
 
@@ -243,13 +243,13 @@ export default function MountainCourse({ id }) {
         isPausedRef.current = false;
         setIsNavigating(true);
         setIsPaused(false);
-        sendMessage({ path: '/workout_control', data: 'start' }, () => {}, () => {});
+        // sendMessage({ path: '/workout_control', data: 'start' }, () => {}, () => {});
     };
 
     const togglePause = () => {
         isPausedRef.current = !isPaused;
         setIsPaused(!isPaused);
-        sendMessage({ path: '/workout_control', data: !isPaused ? 'pause' : 'start' }, () => {}, () => {});
+        // sendMessage({ path: '/workout_control', data: !isPaused ? 'pause' : 'start' }, () => {}, () => {});
     };
 
     const stopNavigation = () => {
@@ -261,7 +261,7 @@ export default function MountainCourse({ id }) {
         distanceRef.current = 0;
         setWorkoutData({ time: "00:00:00", distance: 0 });
         setExtraMetrics({ altitude: 0, calories: 0, heartRate: 0 });
-        sendMessage({ path: '/workout_control', data: 'stop' }, () => {}, () => {});
+        // sendMessage({ path: '/workout_control', data: 'stop' }, () => {}, () => {});
         lastLocationRef.current = null;
         if (locationSubscriptionRef.current) {
             locationSubscriptionRef.current.remove();

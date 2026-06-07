@@ -164,9 +164,9 @@ export default function MateCreate() {
 
     return (
         <View className="flex-1 bg-white">
-            <View className="flex-row items-center px-4 pt-14 pb-4 bg-white border-b border-gray-50">
+            <View className="flex-row items-center px-4 pt-5 pb-4 bg-white border-b border-gray-50">
                 <TouchableOpacity onPress={() => router.back()}><ChevronLeft size={24} /></TouchableOpacity>
-                <Text className="flex-1 text-center font-bold">모임 만들기</Text>
+                <Text className="flex-1 text-center font-bold text-xl">모임 만들기</Text>
             </View>
 
             <ScrollView className="flex-1 px-6" keyboardShouldPersistTaps="handled">
