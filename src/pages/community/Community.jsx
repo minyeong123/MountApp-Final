@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Image, SafeAreaView, FlatList } from "react-native";
 import { useRouter } from "expo-router";
-import { PenLine, ThumbsUp, MessageCircle, Star } from "lucide-react-native";
+import { PenLine, Heart, MessageCircle, Star } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { formatDistanceToNow } from 'date-fns';
@@ -65,7 +65,7 @@ export default function Community() {
             <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center">
                     <View className="flex-row items-center mr-3">
-                        <ThumbsUp size={12} color="#9ca3af" />
+                        <Heart size={12} color="#9ca3af" />
                         <Text className="text-gray-400 text-[11px] ml-1">0</Text>
                     </View>
                     <View className="flex-row items-center">
@@ -85,8 +85,8 @@ export default function Community() {
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50">
-            <View className="bg-white px-5 py-4 border-b border-gray-100 shadow-sm">
-                <Text className="text-xl font-bold text-gray-900">커뮤니티</Text>
+            <View className="bg-white px-5 py-5 border-b border-gray-100 shadow-sm">
+                <Text className="text-xl font-black text-gray-900">커뮤니티</Text>
             </View>
 
             <View className="flex-row bg-white border-b border-gray-100 mb-1">

@@ -185,13 +185,11 @@ export default function MyPage() {
     };
 
     const handlePostClick = (id, type) => {
-        if (type === 'REVIEW') {
-            router.push(`/review/${id}`);
-        } else {
-            router.push(`/post/${id}`);
-        }
+        // [중요] app 폴더 내에 정의된 라우터 경로로 이동해야 합니다.
+        // 타입에 따라 다르게 보내고 싶다면 app 폴더 구조를 맞춰야 합니다.
+        // 지금은 community 상세페이지 하나로 통합하는 것을 추천합니다.
+        router.push(`/community/${id}`);
     };
-
     const handleLogout = async () => {
         Alert.alert("로그아웃", "정말 로그아웃 하시겠습니까?", [
             { text: "취소", style: "cancel" },
@@ -232,8 +230,8 @@ export default function MyPage() {
 
     return (
         <View className="flex-1 bg-white">
-            <View className="pt-12 pb-4 items-center border-b border-gray-100">
-                <Text className="text-xl font-bold text-gray-900">마이페이지</Text>
+            <View className="pt-5 pb-4 px-5 border-b border-gray-50 flex-row justify-between items-center bg-white">
+                <Text className="text-xl font-black text-gray-900">마이페이지</Text>
             </View>
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>

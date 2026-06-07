@@ -148,12 +148,22 @@ export default function MateDetail() {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <View className="flex-row justify-between items-center px-4 py-3 bg-white/95 border-b border-gray-50 z-20">
+            <View className="flex-row justify-between items-center px-4 py-3 bg-white/95 border-b border-gray-50 z-20 mt-1">
                 <View className="flex-row items-center">
-                    <TouchableOpacity onPress={() => router.back()} className="mr-3"><ChevronLeft size={24} color="#1A1A1A" /></TouchableOpacity>
-                    <Text className="font-bold text-[17px]">{data.mountainName}</Text>
+                    <TouchableOpacity onPress={() => router.back()} className="mr-3">
+                        <ChevronLeft size={24} color="#1A1A1A" />
+                    </TouchableOpacity>
+                    <Text
+                        className="font-bold text-[17px]"
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                    >
+                        {data.mountainName}
+                    </Text>
                 </View>
-                <View className="flex-row"><Heart size={22} className="mr-4" /><Share2 size={22} /></View>
+                <View className="flex-row">
+                    <Heart size={22} className="mr-4" />
+                </View>
             </View>
 
             <ScrollView className="flex-1 bg-white" showsVerticalScrollIndicator={false}>
@@ -187,7 +197,21 @@ export default function MateDetail() {
                     <View className="mb-10 border-2 border-gray-50 p-5 rounded-2xl">
                         <Text className="font-extrabold text-[17px] mb-4">상세 일정</Text>
                         {(data.schedule || []).map((step, i) => (
-                            <View key={i} className="flex-row mb-6"><Text className="text-[#3CD371] font-bold w-10">{step.time}</Text><View className="pl-6"><Text className="font-bold">{step.title}</Text><Text className="text-[12px] text-gray-400">{step.desc}</Text></View></View>
+                            <View key={i} className="flex-row">
+                                {/* 왼쪽: 시간 + 점 + 라인 */}
+                                <View className="items-center w-14">
+                                    <Text className="text-[11px] text-gray-400 pt-0.5">{step.time}</Text>
+                                    <View className="w-2.5 h-2.5 rounded-full bg-[#3CD371] mt-1.5" />
+                                    {i < (data.schedule.length - 1) && (
+                                        <View className="w-0.5 bg-gray-200 flex-1 mt-0.5" />
+                                    )}
+                                </View>
+                                {/* 오른쪽: 내용 */}
+                                <View className="pl-3 pb-6 flex-1">
+                                    <Text className="font-bold text-[14px]">{step.title}</Text>
+                                    <Text className="text-[12px] text-gray-400 mt-0.5">{step.desc}</Text>
+                                </View>
+                            </View>
                         ))}
                     </View>
 

@@ -126,11 +126,11 @@ export default function ProfileChange() {
 
     return (
         <View className="flex-1 bg-white">
-            <View className="flex-row items-center h-24 px-4 pt-5 border-b border-gray-100">
+            <View className="flex-row items-center px-4 pt-3 border-b border-gray-100">
                 <TouchableOpacity onPress={() => router.back()} className="p-2">
                     <ChevronLeft size={24} color="#1A1A1A" />
                 </TouchableOpacity>
-                <Text className="flex-1 text-center font-bold text-lg text-gray-900 mr-10">내 정보 변경</Text>
+                <Text className="text-xl font-black text-gray-900 ">내정보 변경 </Text>
             </View>
 
             <ScrollView className="flex-1 px-5">
@@ -151,34 +151,46 @@ export default function ProfileChange() {
 
                 <View className="space-y-6">
                     <View>
-                        <Text className="text-sm font-bold text-gray-800 mb-2">이름 <Text className="text-orange-500">*</Text></Text>
+                        <Text className="text-sm font-bold text-gray-800 mb-4">이름 <Text className="text-orange-500">*</Text></Text>
                         <TextInput value={name} onChangeText={setName} className={inputClass} />
                     </View>
 
                     <View>
-                        <Text className="text-sm font-bold text-gray-800 mb-2">생년월일</Text>
+                        <Text className="text-sm font-bold text-gray-800 mb-4 mt-4">생년월일</Text>
                         <TextInput value={birth} onChangeText={setBirth} placeholder="YYYY-MM-DD" className={inputClass} />
                     </View>
 
                     <View>
-                        <Text className="text-sm font-bold text-gray-800 mb-2">성별</Text>
+                        <Text className="text-sm font-bold text-gray-800 mb-4 mt-4">성별</Text>
                         <View className="flex-row gap-3">
-                            {[{ label: "남성", value: "MALE" }, { label: "여성", value: "FEMALE" }].map((opt) => (
-                                <TouchableOpacity
-                                    key={opt.value}
-                                    onPress={() => setGender(opt.value)}
-                                    className={`flex-1 py-4 rounded-full border items-center ${
-                                        gender === opt.value ? "bg-blue-50 border-blue-600" : "bg-white border-gray-200"
-                                    }`}
-                                >
-                                    <Text className={gender === opt.value ? "text-blue-600 font-bold" : "text-gray-400"}>{opt.label}</Text>
-                                </TouchableOpacity>
-                            ))}
+                            {[{ label: "남성", value: "MALE" }, { label: "여성", value: "FEMALE" }].map((opt) => {
+                                // 선택되었는지 확인
+                                const isSelected = gender === opt.value;
+
+                                // 성별에 따른 색상 정의
+                                const activeBg = opt.value === "FEMALE" ? "bg-pink-50" : "bg-blue-50";
+                                const activeBorder = opt.value === "FEMALE" ? "border-pink-600" : "border-blue-600";
+                                const activeText = opt.value === "FEMALE" ? "text-pink-600" : "text-blue-600";
+
+                                return (
+                                    <TouchableOpacity
+                                        key={opt.value}
+                                        onPress={() => setGender(opt.value)}
+                                        className={`flex-1 py-4 rounded-full border items-center ${
+                                            isSelected ? `${activeBg} ${activeBorder}` : "bg-white border-gray-200"
+                                        }`}
+                                    >
+                                        <Text className={isSelected ? `${activeText} font-bold` : "text-gray-400"}>
+                                            {opt.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
 
                     <View>
-                        <Text className="text-sm font-bold text-gray-800 mb-2">전화번호</Text>
+                        <Text className="text-sm font-bold text-gray-800 mb-4 mt-4">전화번호</Text>
                         <View className="flex-row gap-2">
                             <View className="px-4 py-4 rounded-2xl bg-gray-100 border border-gray-200 justify-center">
                                 <Text className="text-gray-500">+82</Text>
@@ -188,7 +200,7 @@ export default function ProfileChange() {
                     </View>
 
                     <View>
-                        <Text className="text-sm font-bold text-gray-800 mb-2">이메일 주소</Text>
+                        <Text className="text-sm font-bold text-gray-800 mb-4 mt-4">이메일 주소</Text>
                         <View className="flex-row items-center gap-2">
                             <TextInput value={emailId} onChangeText={setEmailId} className="flex-1 px-4 py-4 rounded-2xl border border-gray-200 bg-gray-50" placeholder="아이디" />
                             <Text className="text-gray-400">@</Text>

@@ -5,7 +5,7 @@ import { Star, StarHalf, X, Camera } from "lucide-react-native";
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-
+import BackButton from "../../layouts/BackButton";
 // 🔥 백엔드 서버 주소 (에뮬레이터 권장)
 const BACKEND_URL = "http://10.0.2.2:8082";
 const categories = ["산", "등산용품", "맛집", "숙소"];
@@ -146,9 +146,7 @@ export default function NewPost() {
             <ScrollView className="p-4">
                 {/* 헤더 */}
                 <View className="flex-row items-center bg-white p-3 rounded-xl border border-gray-100 mb-4 mt-6">
-                    <TouchableOpacity onPress={() => router.back()} className="pr-4 p-1">
-                        <Text className="text-gray-600 font-bold">뒤로</Text>
-                    </TouchableOpacity>
+                    <BackButton />
                     <Text className="flex-1 text-center font-bold text-lg">
                         {isEdit ? (initialType === "review" ? "리뷰 수정" : "게시글 수정") : (initialType === "review" ? "리뷰 작성" : "게시글 작성")}
                     </Text>

@@ -4,10 +4,38 @@ import { Search, Users, MapPin, Clock, Plus, MoreHorizontal, MessageCircleMore, 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from 'axios';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 const BACKEND_URL = "http://10.0.2.2:8082";
 
-// 프로필 아바타 컴포넌트
+const LikeButton = ({ initialLikes = 0 }) => {
+    const [likes, setLikes] = useState(initialLikes);
+    const [isLiked, setIsLiked] = useState(false);
+
+    const handleLike = () => {
+        if (!isLiked) {
+            setLikes(prev => prev + 1);
+            setIsLiked(true);
+        } else {
+            setLikes(prev => Math.max(0, prev - 1));
+            setIsLiked(false);
+        }
+    };
+
+    return (
+        <TouchableOpacity onPress={handleLike} className="flex-row items-center space-x-1.5">
+            <Heart
+                size={24}
+                color={isLiked ? "#ef4444" : "#6B7280"}
+                fill={isLiked ? "#ef4444" : "transparent"}
+            />
+            {likes > 0 && (
+                <Text className="text-[14px] font-bold text-red-600">{likes}</Text>
+            )}
+        </TouchableOpacity>
+    );
+};
+
 const ProfileAvatar = ({ imagePath, nickname, size = "w-10 h-10" }) => {
     const [imgError, setImgError] = useState(false);
 
@@ -41,8 +69,13 @@ export default function Mate() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("전체");
     const [activeMenuId, setActiveMenuId] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // 게시글 및 산 데이터 로드
+    const filteredPosts = posts.filter(post =>
+        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.mountainName?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
@@ -51,7 +84,6 @@ export default function Mate() {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             };
 
-            // 병렬 처리로 게시글과 산 목록 동시 호출
             const [postsRes, mtRes] = await Promise.all([
                 axios.get(`${BACKEND_URL}/api/mates`, config),
                 axios.get(`${BACKEND_URL}/api/mountains`, config).catch(() => ({ data: [] }))
@@ -66,11 +98,12 @@ export default function Mate() {
         }
     }, []);
 
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+        }, [loadData])
+    );
 
-    // 메인 이미지 로직 (업로드 사진 최우선, 없으면 산 DB 사진 매핑)
     const getMainImageUrl = (item) => {
         const isRealImage = (path) => {
             if (!path || typeof path !== 'string') return false;
@@ -78,7 +111,6 @@ export default function Mate() {
             return !(lower.includes('placeholder') || lower.includes('default') || lower === 'null');
         };
 
-        // 1순위: 유저 업로드
         let userUploaded = null;
         if (item.imageUrl) userUploaded = typeof item.imageUrl === 'string' ? item.imageUrl.split(',')[0] : item.imageUrl[0];
         else if (item.imageUrls && item.imageUrls.length > 0) userUploaded = item.imageUrls[0];
@@ -90,7 +122,6 @@ export default function Mate() {
             return `${BACKEND_URL}/uploads/${filename}`;
         }
 
-        // 2순위: DB 산 목록 매칭
         const mtName = item.mountainName || (item.course?.name ? item.course.name.split(' ')[0] : "");
 
         if (mtName && mountains.length > 0) {
@@ -106,7 +137,6 @@ export default function Mate() {
             }
         }
 
-        // 3순위: 기본 배경
         return 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=800&auto=format&fit=crop';
     };
 
@@ -118,7 +148,6 @@ export default function Mate() {
         return { label: difficulty, bg: 'bg-gray-400' };
     };
 
-    // 게시글 삭제 (모바일 알림창 대응)
     const handleDelete = async (id) => {
         Alert.alert(
             "삭제 확인",
@@ -136,7 +165,7 @@ export default function Mate() {
                             });
                             Alert.alert("알림", "삭제되었습니다.");
                             setActiveMenuId(null);
-                            loadData(); // 삭제 후 리스트 갱신
+                            loadData();
                         } catch (error) {
                             Alert.alert("실패", "삭제에 실패했습니다. 권한을 확인해주세요.");
                         }
@@ -148,14 +177,14 @@ export default function Mate() {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            {/* 상단 헤더 */}
             <View className="px-4 py-3 bg-white border-b border-gray-50 mt-6 z-10">
                 <View className="flex-row items-center space-x-3 mb-4">
                     <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-10">
                         <Search size={18} color="#9ca3af" />
-                        <TextInput placeholder="어떤 산으로 떠나볼까요?" className="flex-1 ml-2 text-sm" />
+                        <TextInput placeholder="어떤 산으로 떠나볼까요?" className="flex-1 ml-2 text-sm" value={searchQuery}
+                                   onChangeText={setSearchQuery} />
                     </View>
-                    <TouchableOpacity onPress={() => router.push('/mate/chat')}>
+                    <TouchableOpacity className="ml-3" onPress={() => router.push('/mate/chat')}>
                         <MessageCircleMore size={26} color="#6b7280" />
                     </TouchableOpacity>
                 </View>
@@ -179,19 +208,20 @@ export default function Mate() {
                 </View>
             ) : (
                 <ScrollView className="flex-1 bg-gray-50 pt-2">
-                    {posts.length === 0 ? (
+                    {filteredPosts.length === 0 ? (
                         <View className="py-20 items-center">
-                            <Text className="text-gray-400">아직 등록된 모임이 없습니다.</Text>
-                            <Text className="text-gray-400">첫 번째 모임을 만들어보세요!</Text>
+                            <Text className="text-gray-400">검색 결과가 없습니다.</Text>
+                            <Text className="text-gray-400">다른 검색어를 입력해보세요.</Text>
                         </View>
                     ) : (
-                        posts.map((post) => (
+                        filteredPosts.map((post) => (
                             <View key={post.id} className="bg-white mb-3 pt-5 px-4 pb-6 shadow-sm border-t-8 border-gray-50">
-                                {/* 작성자 정보 및 더보기 메뉴 */}
                                 <View className="flex-row justify-between items-center mb-4 relative z-20">
-                                    <View className="flex-row items-center space-x-2.5">
-                                        <ProfileAvatar imagePath={post.host?.profileImg} nickname={post.host?.name} />
-                                        <View>
+                                    <View className="flex-row items-center">
+                                        <View className="mr-3">
+                                            <ProfileAvatar imagePath={post.host?.profileImg} nickname={post.host?.name} />
+                                        </View>
+                                        <View className="justify-center">
                                             <Text className="text-[14px] font-bold text-gray-800">{post.host?.name || "익명"}</Text>
                                             <Text className="text-[11px] text-gray-400 font-medium">방금 전</Text>
                                         </View>
@@ -202,7 +232,6 @@ export default function Mate() {
                                             <MoreHorizontal size={20} color="#d1d5db" />
                                         </TouchableOpacity>
 
-                                        {/* 삭제 메뉴 모달창 (Absolute 위치) */}
                                         {activeMenuId === post.id && (
                                             <View className="absolute right-0 top-8 bg-white w-28 rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
                                                 <TouchableOpacity
@@ -220,19 +249,23 @@ export default function Mate() {
                                     </View>
                                 </View>
 
-                                {/* 산 이미지 및 라벨 영역 */}
                                 <TouchableOpacity
                                     onPress={() => router.push(`/mate/${post.id}`)}
                                     className="rounded-2xl overflow-hidden mb-4 bg-gray-100 shadow-sm relative -mx-1"
                                 >
                                     <Image source={{ uri: getMainImageUrl(post) }} className="w-full h-64" resizeMode="cover" />
 
-                                    <View className="absolute top-4 left-4 flex-row space-x-2">
-                                        <View className={`px-3 py-1 rounded-lg ${getDifficultyStyle(post.course?.difficulty).bg} shadow-lg`}>
-                                            <Text className="text-white text-[11px] font-bold">{getDifficultyStyle(post.course?.difficulty).label}</Text>
-                                        </View>
+                                    {/* 날짜: 왼쪽 끝 */}
+                                    <View className="absolute top-4 left-4">
                                         <View className="bg-white/90 px-3 py-1 rounded-lg shadow-sm">
                                             <Text className="text-gray-800 text-[11px] font-bold">{post.deadline || "D-Day"}</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* 난이도: 오른쪽 끝 */}
+                                    <View className="absolute top-4 right-4">
+                                        <View className={`px-3 py-1 rounded-lg ${getDifficultyStyle(post.course?.difficulty).bg} shadow-lg`}>
+                                            <Text className="text-white text-[11px] font-bold">{getDifficultyStyle(post.course?.difficulty).label}</Text>
                                         </View>
                                     </View>
 
@@ -242,14 +275,17 @@ export default function Mate() {
                                     </View>
                                 </TouchableOpacity>
 
-                                {/* 액션 아이콘 및 내용 */}
                                 <View className="px-1">
                                     <View className="flex-row justify-between items-center mb-4">
-                                        <View className="flex-row space-x-5">
-                                            <TouchableOpacity><Heart size={24} color="#374151" /></TouchableOpacity>
-                                            <TouchableOpacity><MessageCircle size={24} color="#374151" /></TouchableOpacity>
-                                            <TouchableOpacity><Share2 size={24} color="#374151" /></TouchableOpacity>
+                                        <View className="flex-row items-center">
+                                            <View className="mr-3">
+                                                <LikeButton initialLikes={post.likesCount || 0} />
+                                            </View>
+                                            <TouchableOpacity>
+                                                <MessageCircle size={24} color="#6B7280" />
+                                            </TouchableOpacity>
                                         </View>
+
                                         <TouchableOpacity
                                             onPress={() => router.push(`/mate/${post.id}`)}
                                             className="bg-[#F59E6D] px-5 py-2 rounded-full shadow-sm"
@@ -260,8 +296,8 @@ export default function Mate() {
 
                                     <Text className="text-[19px] font-extrabold text-gray-900 leading-tight tracking-tight mb-2">{post.title}</Text>
 
-                                    <View className="flex-row items-center space-x-4 mb-2">
-                                        <View className="flex-row items-center">
+                                    <View className="flex-row items-center mb-2">
+                                        <View className="flex-row items-center mr-2">
                                             <MapPin size={14} color="#F59E6D" />
                                             <Text className="text-[#F59E6D] text-[13px] font-bold ml-1.5">{post.course?.distance || "거리 미상"}</Text>
                                         </View>
@@ -275,7 +311,6 @@ export default function Mate() {
                                         {post.description} <Text className="text-gray-400">더보기</Text>
                                     </Text>
 
-                                    {/* 태그 영역 */}
                                     {post.tags && post.tags.length > 0 && (
                                         <View className="flex-row flex-wrap mt-1">
                                             {post.tags.map((tag, idx) => (
@@ -292,7 +327,6 @@ export default function Mate() {
                         ))
                     )}
 
-                    {/* 최하단 여백 및 아이콘 영역 */}
                     {posts.length > 0 && (
                         <View className="py-10 items-center opacity-60 mb-10">
                             <View className="w-10 h-10 bg-gray-200 rounded-full items-center justify-center mb-3">
@@ -306,7 +340,6 @@ export default function Mate() {
                 </ScrollView>
             )}
 
-            {/* 글쓰기 플로팅 버튼 */}
             <TouchableOpacity
                 onPress={() => router.push('/mate/matecreate')}
                 className="absolute bottom-10 right-6 bg-[#F59E6D] flex-row items-center px-6 h-12 rounded-full shadow-lg"

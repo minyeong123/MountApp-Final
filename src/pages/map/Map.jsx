@@ -56,7 +56,7 @@ export default function Map() {
     return (
         <SafeAreaView className="flex-1 bg-white">
             {/* 상단 검색바 영역 */}
-            <View className="p-4 bg-white border-b border-gray-100 shadow-sm z-20 mt-6">
+            <View className="p-4 bg-white border-b border-gray-100 shadow-sm z-20 mt-4">
                 <View className="relative flex-row items-center bg-gray-100 rounded-2xl px-4 h-11">
                     <Search size={18} color="#9ca3af" />
                     <TextInput

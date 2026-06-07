@@ -164,7 +164,7 @@ export default function MountainCourse({ id }) {
                         if (!isMounted || !isNavigatingRef.current || isPausedRef.current) return;
                         const { latitude, longitude, altitude } = location.coords;
 
-                        // 🔥 1. 워치로 현재 폰의 위치(위도, 경도, 고도)를 실시간 전송!
+                        // 🔥 1. 워치로 현재 폰의 위치(위도, 경도, 고도)를 실시간 전송!12
                         const gpsPayload = JSON.stringify({ lat: latitude, lng: longitude, alt: altitude || 0 });
                         sendMessage({ path: '/gps_data', data: gpsPayload }, () => {}, () => {});
 

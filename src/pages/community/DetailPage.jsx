@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { EllipsisVertical, Edit, Trash2, Star, User as UserIcon, Heart, StarHalf } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import BackButton from "../../layouts/BackButton";
 
 // 🔥 백엔드 서버 주소 (에뮬레이터 권장)
 const BACKEND_URL = "http://10.0.2.2:8082";
@@ -154,8 +155,22 @@ export default function DetailPage() {
         }
     };
 
-    if (loading) return <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#6366f1" /></View>;
-    if (!item) return <View className="flex-1 justify-center items-center"><Text className="text-gray-500 font-bold">데이터를 찾을 수 없습니다.</Text></View>;
+// 157번 줄 근처를 이렇게 수정하세요
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center">
+                <ActivityIndicator size="large" color="#6366f1" />
+            </View>
+        );
+    }
+
+    if (!item) {
+        return (
+            <View className="flex-1 justify-center items-center">
+                <Text className="text-gray-500 font-bold">데이터를 찾을 수 없습니다.</Text>
+            </View>
+        );
+    }
 
     const isReview = (item?.rating && item.rating > 0);
 
@@ -179,122 +194,114 @@ export default function DetailPage() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
-            <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+        <SafeAreaView className="flex-1 bg-gray-50">
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+
                 {/* 1. 상단 헤더 섹션 */}
-                <View className="flex-row justify-between items-center py-4 border-b border-gray-100">
-                    <TouchableOpacity onPress={() => router.back()} className="p-1">
-                        <Text className="text-gray-600 font-bold">뒤로</Text>
-                    </TouchableOpacity>
-                    <Text className="text-lg font-bold flex-1 text-center" numberOfLines={1}>
+                <View className="flex-row justify-between items-center py-4 px-4 bg-white border-b border-gray-100">
+                        <BackButton />
+                    <Text className="text-lg font-extrabold text-gray-900 flex-1 text-center" numberOfLines={1}>
                         {item.title}
                     </Text>
                     <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)} className="p-1">
-                        <EllipsisVertical size={20} color="#374151" />
+                        <EllipsisVertical size={22} color="#1f2937" />
                     </TouchableOpacity>
                 </View>
 
-                {/* 2. 수정/삭제 팝업 메뉴 */}
-                {menuOpen && (
-                    <View className="absolute right-4 top-14 bg-white shadow-xl border border-gray-100 rounded-xl z-50 py-2 w-32">
-                        <TouchableOpacity
-                            className="px-4 py-3 border-b border-gray-50 flex-row items-center space-x-2"
-                            onPress={() => {
-                                setMenuOpen(false);
-                                // 🔥 수정 페이지 이동 시, 리뷰인지 게시글인지 명시하는 type 파라미터 이식 완료
-                                router.push({
-                                    pathname: "/community/newpost",
-                                    params: {
-                                        isEdit: "true",
-                                        postData: JSON.stringify(item),
-                                        type: isReview ? "review" : "post"
-                                    }
-                                });
-                            }}
-                        >
-                            <Edit size={16} color="#4b5563" />
-                            <Text className="text-gray-700">수정</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="px-4 py-3 flex-row items-center space-x-2"
-                            onPress={() => { setMenuOpen(false); setShowDeleteModal(true); }}
-                        >
-                            <Trash2 size={16} color="#ef4444" />
-                            <Text className="text-red-500">삭제</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {/* 3. 작성자 및 별점 정보 */}
-                <View className="flex-row justify-between items-center mt-6">
-                    <View className="flex-row items-center space-x-3">
-                        <ProfileAvatar imagePath={item.profileImage} nickname={item.nickname} />
-                        <View>
-                            <Text className="font-bold text-gray-800">{item.nickname || "익명"}</Text>
-                            <Text className="text-xs text-gray-500">{item.postdate || "날짜 미상"}</Text>
+                {/* 2. 게시글 메인 컨테이너 */}
+                <View className="bg-white m-4 p-5 rounded-3xl shadow-sm border border-gray-100">
+                    {/* 작성자 섹션 */}
+                    <View className="flex-row justify-between items-center mb-6">
+                        <View className="flex-row items-center">
+                            <View className="mr-4">
+                                <ProfileAvatar imagePath={item.profileImage} nickname={item.nickname} />
+                            </View>
+                            <View className="flex-col justify-center">
+                                <Text className="font-bold text-gray-900 text-[16px] mb-1">
+                                    {item.nickname || "익명"}
+                                </Text>
+                                <Text className="text-xs text-gray-400">
+                                    {item.postdate || "방금 전"}
+                                </Text>
+                            </View>
                         </View>
+                        {isReview ? renderStars(item.rating) : null}
                     </View>
-                    {isReview ? renderStars(item.rating) : null}
-                </View>
 
-                {/* 4. 이미지 및 본문 */}
-                {item.imagePath ? (
-                    <Image
-                        source={{ uri: getSafeImageUrl(item.imagePath) }}
-                        className="w-full h-64 rounded-2xl mt-5"
-                        resizeMode="cover"
-                    />
-                ) : null}
+                    {/* 이미지 */}
+                    {item.imagePath && (
+                        <Image
+                            source={{ uri: getSafeImageUrl(item.imagePath) }}
+                            className="w-full h-72 rounded-2xl mb-5"
+                            resizeMode="cover"
+                        />
+                    )}
 
-                <View className="mt-5">
-                    <Text className="text-gray-800 leading-6 text-[15px]">
+                    {/* 본문 */}
+                    <Text className="text-gray-700 leading-7 text-[16px]">
                         {item.postContents || item.comment || item.content || ""}
                     </Text>
-                </View>
 
-                {/* 5. 좋아요 버튼 */}
-                <View className="flex-row items-center mt-6 space-x-2">
-                    <TouchableOpacity onPress={onLikeClick}>
-                        <Heart size={28} color={liked ? "#ef4444" : "#374151"} fill={liked ? "#ef4444" : "transparent"} />
-                    </TouchableOpacity>
-                    <Text className="font-bold text-gray-800">좋아요 {likeCount}개</Text>
+                    {/* 좋아요 섹션 */}
+                    <View className="flex-row items-center mt-6 pt-5 border-t border-gray-50">
+                        <TouchableOpacity onPress={onLikeClick} className="flex-row items-center">
+                            <Heart
+                                size={24}
+                                color={liked ? "#ef4444" : "#9ca3af"}
+                                fill={liked ? "#ef4444" : "transparent"}
+                            />
+                            <Text className={`ml-2 font-semibold ${liked ? "text-red-500" : "text-gray-600"}`}>
+                                {likeCount}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* 6. 댓글 영역 */}
-                <View className="mt-10 mb-20">
-                    <Text className="text-lg font-bold mb-4">댓글 ({comments.length})</Text>
+                <View className="px-4 mb-10">
+                    <Text className="text-base font-bold text-gray-900 mb-4">댓글 {comments.length}개</Text>
 
-                    <View className="flex-row space-x-2 mb-6">
+                    {/* 댓글 입력창 */}
+                    <View className="flex-row items-center mb-6">
                         <TextInput
-                            className="flex-1 bg-gray-100 rounded-xl px-4 py-3"
-                            placeholder="댓글을 입력하세요..."
+                            className="w-[77%] bg-white border border-gray-200 rounded-2xl px-4 py-3.5"
+                            placeholder="따뜻한 댓글을 남겨보세요!"
+                            placeholderTextColor="#9ca3af"
                             value={commentContent}
                             onChangeText={setCommentContent}
                         />
                         <TouchableOpacity
                             onPress={handleCommentSubmit}
-                            className="bg-indigo-500 px-5 rounded-xl justify-center"
+                            className="ml-auto bg-indigo-600 px-6 h-[50px] rounded-2xl justify-center items-center shadow-indigo-200 shadow-lg"
                         >
                             <Text className="text-white font-bold">등록</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {comments.length === 0 ? (
-                        <Text className="text-gray-500 text-center py-4">아직 댓글이 없습니다.</Text>
-                    ) : (
-                        comments.map((comment) => (
-                            <View key={comment.commentId} className="flex-row space-x-3 mb-5 bg-gray-50 p-4 rounded-2xl">
-                                <ProfileAvatar imagePath={comment.profileImage} nickname={comment.nickname} size="w-10 h-10" />
-                                <View className="flex-1">
-                                    <View className="flex-row justify-between items-center mb-1">
-                                        <Text className="font-bold text-gray-900 text-sm">{comment.nickname}</Text>
-                                        <Text className="text-[10px] text-gray-400">{comment.commentDate}</Text>
+                    {/* 댓글 리스트 */}
+                    <View>
+                        {comments.length === 0 ? (
+                            <Text className="text-gray-400 text-center py-10">아직 댓글이 없습니다.</Text>
+                        ) : (
+                            comments.map((comment) => (
+                                <View key={comment.commentId} className="flex-row bg-white p-4 rounded-2xl border border-gray-100 mb-4">
+                                    {/* 아바타 영역: mr-4로 텍스트와 간격 확보 */}
+                                    <View className="mr-4">
+                                        <ProfileAvatar imagePath={comment.profileImage} nickname={comment.nickname} size="w-10 h-10" />
                                     </View>
-                                    <Text className="text-gray-600 text-[14px] leading-5">{comment.commentContents}</Text>
+
+                                    {/* 내용 영역 */}
+                                    <View className="flex-1">
+                                        <View className="flex-row justify-between items-center mb-1.5">
+                                            <Text className="font-bold text-gray-800 text-sm">{comment.nickname}</Text>
+                                            <Text className="text-[10px] text-gray-400">{comment.commentDate}</Text>
+                                        </View>
+                                        <Text className="text-gray-600 text-[14px] leading-5">{comment.commentContents}</Text>
+                                    </View>
                                 </View>
-                            </View>
-                        ))
-                    )}
+                            ))
+                        )}
+                    </View>
                 </View>
             </ScrollView>
 

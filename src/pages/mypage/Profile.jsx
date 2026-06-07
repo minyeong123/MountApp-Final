@@ -90,11 +90,11 @@ export default function Profile() {
     return (
         <SafeAreaView className="flex-1 bg-white">
             {/* 상단 헤더 */}
-            <View className="flex-row items-center h-14 px-4 border-b border-gray-100 mt-6">
+            <View className="flex-row items-center h-14 px-4 border-b border-gray-100 mt-2">
                 <TouchableOpacity onPress={() => router.back()} className="p-2">
                     <ChevronLeft size={24} color="#1A1A1A" />
                 </TouchableOpacity>
-                <Text className="flex-1 text-center font-bold text-lg text-gray-900 mr-10">프로필 수정</Text>
+                <Text className="text-xl font-black text-gray-900 ">내정보 수정 </Text>
             </View>
 
             <ScrollView className="flex-1">
