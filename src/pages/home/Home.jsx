@@ -11,15 +11,14 @@ import DisasterBanner from "../../components/DisasterBanner";
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 
-// 🔥 바로 이 줄입니다! 이 줄이 빠져서 존재하지 않는다고 에러가 났던 겁니다.
-// (경로가 만약 다르다면 회원님의 AdminMode 파일 위치에 맞게 살짝 수정해주세요!)
 import AdminMode from "../../components/AdminMode";
 
 const logo = require("../../../assets/images/logo.png");
 
 const getDebuggingUrl = () => {
+    //return "http://172.16.106.105:8082";
     return "http://10.0.2.2:8082";
-};
+    }
 
 const API_BASE_URL = getDebuggingUrl();
 const ENCODING_KEY = "D4HOdxG7MU6ChcZPPl6q2mG2In%2FDM%2BwjAVif6pJFHS91I52JjltPYQOl5b26uQ1EBE7FuXWljJOodT1Ge4iLHA%3D%3D";
