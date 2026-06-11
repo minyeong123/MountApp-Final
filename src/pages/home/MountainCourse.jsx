@@ -16,6 +16,7 @@ import { MOUNTAIN_DATA, IMG_BUKHAN_C1 } from "./mountainData";
 
 const { width, height } = Dimensions.get("window");
 
+// 에뮬레이터 테스트용 로컬 IP. 실제 기기 테스트 시에는 서버의 실제 IP나 도메인으로 변경해야 합니다.
 const BACKEND_URL = "http://10.0.2.2:8082";
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -28,13 +29,28 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+// 🔥 워치가 없는 다른 PC 환경에서도 앱이 튕기지 않도록 방어하는 안전 전송 함수
+const safeSendMessage = (payload) => {
+    try {
+        sendMessage(
+            payload,
+            () => {},
+            (err) => console.log("워치 전송 실패 (워치 미연결 등):", err)
+        );
+    } catch (error) {
+        console.warn("⚠️ 워치 통신 모듈을 사용할 수 없는 환경입니다:", error);
+    }
+};
+
 export default function MountainCourse({ id }) {
     const [selectedTrail, setSelectedTrail] = useState(null);
     const [isNavigating, setIsNavigating] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [seconds, setSeconds] = useState(0);
+
     const [workoutData, setWorkoutData] = useState({ time: "00:00:00", distance: 0 });
-    const [extraMetrics, setExtraMetrics] = useState({ altitude: 0, calories: 0, heartRate: 0 });
+    // 🔥 걸음 수(stepCount) 상태 추가
+    const [extraMetrics, setExtraMetrics] = useState({ altitude: 0, calories: 0, heartRate: 0, stepCount: 0 });
 
     const webViewRef = useRef(null);
     const locationSubscriptionRef = useRef(null);
@@ -42,6 +58,11 @@ export default function MountainCourse({ id }) {
     const distanceRef = useRef(0);
     const isNavigatingRef = useRef(false);
     const isPausedRef = useRef(false);
+
+    // 🔥 요약 기록 계산을 위한 변수 (고도 최고치, 심박수 누적)
+    const maxAltitudeRef = useRef(0);
+    const heartRateSumRef = useRef(0);
+    const heartRateCountRef = useRef(0);
 
     const trails = MOUNTAIN_DATA[id] || [];
 
@@ -120,6 +141,7 @@ export default function MountainCourse({ id }) {
         webViewRef.current?.postMessage(JSON.stringify({ lat: loc.coords.latitude, lng: loc.coords.longitude, panTo: true }));
     };
 
+    // 🔥 서버에서 최신 심박수와 걸음수를 가져오고 평균 심박수 계산
     const fetchLatestBiometrics = async () => {
         try {
             const token = await AsyncStorage.getItem("jwtToken");
@@ -136,10 +158,57 @@ export default function MountainCourse({ id }) {
                 setExtraMetrics(prev => ({
                     ...prev,
                     heartRate: data.heartRate || prev.heartRate,
+                    stepCount: data.stepCount || prev.stepCount
                 }));
+
+                // 운동 중이고 일시정지 상태가 아닐 때만 평균 심박수용 데이터 누적
+                if (data.heartRate && data.heartRate > 0 && !isPausedRef.current) {
+                    heartRateSumRef.current += data.heartRate;
+                    heartRateCountRef.current += 1;
+                }
             }
         } catch (error) {
             console.error("서버에서 생체 데이터를 불러오지 못했습니다:", error);
+        }
+    };
+
+    // 🔥 운동 종료 시 요약 데이터를 서버로 전송하는 함수
+    const saveWorkoutSummary = async () => {
+        try {
+            const token = await AsyncStorage.getItem("jwtToken");
+            if (!token) return;
+
+            const avgHr = heartRateCountRef.current > 0
+                ? Math.round(heartRateSumRef.current / heartRateCountRef.current)
+                : 0;
+
+            const summaryPayload = {
+                mountainId: String(id),
+                trailName: selectedTrail?.name || "알 수 없는 코스",
+                totalDistance: distanceRef.current,
+                avgHeartRate: avgHr,
+                maxAltitude: maxAltitudeRef.current,
+                totalCalories: extraMetrics.calories,
+                totalTimeSeconds: seconds,
+                totalStepCount: extraMetrics.stepCount
+            };
+
+            const response = await fetch(`${BACKEND_URL}/api/health/workout-summary`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(summaryPayload)
+            });
+
+            if (response.ok) {
+                console.log("✅ 등산 요약 기록 저장 성공!");
+            } else {
+                console.error("❌ 등산 기록 저장 실패");
+            }
+        } catch (error) {
+            console.error("네트워크 에러:", error);
         }
     };
 
@@ -158,15 +227,22 @@ export default function MountainCourse({ id }) {
                 locationSubscriptionRef.current = null;
             }
             try {
+                // ⚠️ 실제 출시 시에는 배터리 관리를 위해 timeInterval(예: 5000)과 distanceInterval(예: 5)을 늘려주세요.
                 locationSubscriptionRef.current = await Location.watchPositionAsync(
                     { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5 },
                     (location) => {
                         if (!isMounted || !isNavigatingRef.current || isPausedRef.current) return;
                         const { latitude, longitude, altitude } = location.coords;
 
-                        // 🔥 1. 워치로 현재 폰의 위치(위도, 경도, 고도)를 실시간 전송!
-                        const gpsPayload = JSON.stringify({ lat: latitude, lng: longitude, alt: altitude || 0 });
-                        sendMessage({ path: '/gps_data', data: gpsPayload }, () => {}, () => {});
+                        // 최고 고도 갱신
+                        const currentAlt = altitude ? Math.round(altitude) : 0;
+                        if (currentAlt > maxAltitudeRef.current) {
+                            maxAltitudeRef.current = currentAlt;
+                        }
+
+                        // 워치로 폰 GPS 전송 (안전 함수 사용)
+                        const gpsPayload = JSON.stringify({ lat: latitude, lng: longitude, alt: currentAlt });
+                        safeSendMessage({ path: '/gps_data', data: gpsPayload });
 
                         webViewRef.current?.postMessage(JSON.stringify({ lat: latitude, lng: longitude, panTo: false }));
 
@@ -180,14 +256,14 @@ export default function MountainCourse({ id }) {
 
                                 setExtraMetrics(m => ({
                                     ...m,
-                                    altitude: altitude ? Math.round(altitude) : m.altitude,
+                                    altitude: currentAlt || m.altitude,
                                     calories: Math.floor(nextDistance * 75)
                                 }));
                                 lastLocationRef.current = { lat: latitude, lng: longitude };
                             }
                         } else {
                             lastLocationRef.current = { lat: latitude, lng: longitude };
-                            setExtraMetrics(m => ({ ...m, altitude: altitude ? Math.round(altitude) : m.altitude }));
+                            setExtraMetrics(m => ({ ...m, altitude: currentAlt || m.altitude }));
                         }
                     }
                 );
@@ -243,16 +319,27 @@ export default function MountainCourse({ id }) {
         isPausedRef.current = false;
         setIsNavigating(true);
         setIsPaused(false);
-        sendMessage({ path: '/workout_control', data: 'start' }, () => {}, () => {});
+
+        // 계산용 변수 초기화
+        maxAltitudeRef.current = 0;
+        heartRateSumRef.current = 0;
+        heartRateCountRef.current = 0;
+
+        safeSendMessage({ path: '/workout_control', data: 'start' });
     };
 
     const togglePause = () => {
         isPausedRef.current = !isPaused;
         setIsPaused(!isPaused);
-        sendMessage({ path: '/workout_control', data: !isPaused ? 'pause' : 'start' }, () => {}, () => {});
+        safeSendMessage({ path: '/workout_control', data: !isPaused ? 'pause' : 'start' });
     };
 
     const stopNavigation = () => {
+        // 🔥 초기화 되기 전, 측정된 데이터를 DB 요약 테이블로 발사
+        if (isNavigatingRef.current) {
+            saveWorkoutSummary();
+        }
+
         isNavigatingRef.current = false;
         isPausedRef.current = false;
         setIsNavigating(false);
@@ -260,8 +347,10 @@ export default function MountainCourse({ id }) {
         setSeconds(0);
         distanceRef.current = 0;
         setWorkoutData({ time: "00:00:00", distance: 0 });
-        setExtraMetrics({ altitude: 0, calories: 0, heartRate: 0 });
-        sendMessage({ path: '/workout_control', data: 'stop' }, () => {}, () => {});
+        setExtraMetrics({ altitude: 0, calories: 0, heartRate: 0, stepCount: 0 });
+
+        safeSendMessage({ path: '/workout_control', data: 'stop' });
+
         lastLocationRef.current = null;
         if (locationSubscriptionRef.current) {
             locationSubscriptionRef.current.remove();
