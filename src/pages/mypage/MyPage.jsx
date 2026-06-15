@@ -52,7 +52,7 @@ const HikingRecordCard = ({ record }) => (
                     <View className="flex-1 bg-gray-50 border border-gray-100 rounded-lg p-1.5 items-center justify-center">
                         <HeartPulse size={12} color="#EF4444" />
                         <Text className="text-[8px] text-gray-400 mt-0.5">{record.stat4Name}</Text>
-                        <Text className="text-[10px] font-bold text-gray-800 mt-0.5" numberOfLines={1}>{record.stat4Value}km</Text>
+                        <Text className="text-[10px] font-bold text-gray-800 mt-0.5" numberOfLines={1}>{record.stat4Value}bpm</Text>
                     </View>
                 </View>
             </View>
@@ -109,7 +109,7 @@ export default function MyPage() {
             stat3Name: "칼로리",
             stat3Value: "126",
             stat4Name: "심박수",
-            stat4Value: "4.2",
+            stat4Value: "42",
             mapImage: "https://via.placeholder.com/150", // 실제 지도 데이터 URL 매핑 필요
             period: "THIS_MONTH" // 예시용 기간 태그
         },

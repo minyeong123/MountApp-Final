@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User, Lock, Eye, EyeOff } from "lucide-react-native"; // 아이콘 추가
 import axios from "axios";
 // 🔴 워치 관련 패키지 주석 처리
-import { sendMessage } from 'react-native-wear-connectivity';
+// import { sendMessage } from 'react-native-wear-connectivity';
 
 const logo = require("../../../assets/images/logo.png");
 
@@ -49,17 +49,17 @@ export default function LoginPage() {
                 // 🔥 2. 휴대폰 저장소(AsyncStorage)에 둘 다 저장합니다!
                 await AsyncStorage.setItem("jwtToken", token);
 
-                // 🔴 워치로 토큰 전송하는 코드 주석 처리
+                //🔴 워치로 토큰 전송하는 코드 주석 처리
 
-                sendMessage(
-                    {
-                        path: '/send_jwt_token', // 워치가 기다리고 있는 바로 그 경로
-                        data: token              // 보낼 내용 (JWT 토큰)
-                    },
-                    (match) => console.log("✅ 워치로 토큰 전송 성공!", match),
-                    (err) => console.error("❌ 워치로 토큰 전송 실패:", err)
-                );
-
+                // try {
+                //     sendMessage(
+                //         { path: '/send_jwt_token', data: token },
+                //         (match) => console.log("✅ 워치로 토큰 전송 성공!", match),
+                //         (err) => console.warn("⚠️ 워치 미연결 (무시):", err)
+                //     );
+                // } catch (e) {
+                //     console.warn("⚠️ 워치 예외 무시:", e);
+                // }
 
                 if (userRole) {
                     await AsyncStorage.setItem("role", String(userRole));

@@ -116,7 +116,17 @@ export default function Join_1() {
                                 {nickStatus.loading ? <ActivityIndicator size="small" color="#6366f1" /> : <Text className="text-gray-500 text-xs font-bold">중복확인</Text>}
                             </TouchableOpacity>
                         </View>
-                        {nickStatus.result === true && <View className="flex-row items-center mt-2 ml-1"><CheckCircle size={14} color="#16a34a" /><Text className="text-xs text-green-600 ml-1">사용 가능한 활동명입니다.</Text></View>}
+                        {nickStatus.result === true &&
+                            <View className="flex-row items-center mt-2 ml-1">
+                                <CheckCircle size={14} color="#16a34a" />
+                                <Text className="text-xs text-green-600 ml-1">사용 가능한 활동명입니다.</Text>
+                            </View>}
+                        {nickStatus.result === false && (
+                            <View className="flex-row items-center mt-2 ml-1">
+                                <XCircle size={14} color="#dc2626" />
+                                <Text className="text-xs text-red-500 ml-1">이미 사용 중인 활동명입니다.</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* 아이디 */}
@@ -137,7 +147,19 @@ export default function Join_1() {
                                 {idStatus.loading ? <ActivityIndicator size="small" color="#6366f1" /> : <Text className="text-gray-500 text-xs font-bold">중복확인</Text>}
                             </TouchableOpacity>
                         </View>
-                        {idStatus.result === true && <View className="flex-row items-center mt-2 ml-1"><CheckCircle size={14} color="#16a34a" /><Text className="text-xs text-green-600 ml-1">사용 가능한 아이디입니다.</Text></View>}
+                        {/* 아이디 중복 확인 결과 */}
+                        {idStatus.result === true && (
+                            <View className="flex-row items-center mt-2 ml-1">
+                                <CheckCircle size={14} color="#16a34a" />
+                                <Text className="text-xs text-green-600 ml-1">사용 가능한 아이디입니다.</Text>
+                            </View>
+                        )}
+                        {idStatus.result === false && (
+                            <View className="flex-row items-center mt-2 ml-1">
+                                <XCircle size={14} color="#dc2626" />
+                                <Text className="text-xs text-red-500 ml-1">이미 사용 중인 아이디입니다.</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* 비밀번호 */}

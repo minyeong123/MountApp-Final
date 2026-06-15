@@ -54,7 +54,6 @@ export default function TabLayout() {
                         tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>메이트</Text>,
                     }}
                 />
-                />
                 <Tabs.Screen
                     name="community"
                     options={{
