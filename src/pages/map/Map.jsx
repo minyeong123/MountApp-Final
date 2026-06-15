@@ -68,14 +68,6 @@ export default function Map() {
                         returnKeyType="search"
                     />
                 </View>
-                {/* 태그 버튼들 */}
-                <View className="flex-row mt-3 gap-2">
-                    {['산', '추천코스'].map(tag => (
-                        <TouchableOpacity key={tag} className="bg-white border border-gray-200 rounded-full px-4 py-1.5">
-                            <Text className="text-[11px] font-medium text-gray-600">{tag}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
             </View>
 
             {/* 지도 영역 */}
