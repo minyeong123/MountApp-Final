@@ -6,11 +6,20 @@ import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sendMessage } from 'react-native-wear-connectivity';
 
-// 등산 기록 카드 컴포넌트
+// 초(Seconds) 단위를 hh:mm:ss 포맷으로 변환해 주는 헬퍼 함수
+const formatTime = (totalSeconds) => {
+    if (!totalSeconds) return "00:00:00";
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+// 🏔️ 등산 기록 카드 컴포넌트
 const HikingRecordCard = ({ record }) => (
     <View className="bg-white border border-gray-100 rounded-2xl p-4 mb-3 shadow-sm">
         <View className="flex-row gap-3">
-            {/* 왼쪽 지도 이미지 영역 */}
+            {/* 왼쪽 지도 이미지 영역 (디자인 유지) */}
             <View className="w-[100px] h-[100px] rounded-xl bg-gray-100 overflow-hidden border border-gray-200">
                 {record.mapImage ? (
                     <Image source={{ uri: record.mapImage }} className="w-full h-full" />
@@ -21,11 +30,11 @@ const HikingRecordCard = ({ record }) => (
                 )}
             </View>
 
-            {/* 오른쪽 등산 정보 요약 */}
+            {/* 오른쪽 등산 요약 정보 피드 */}
             <View className="flex-1 justify-between">
                 <View className="flex-row justify-between items-start">
                     <Text className="text-base font-bold text-gray-900 flex-1 mr-2" numberOfLines={1}>
-                        {record.mountainName} ({record.courseName})
+                        {record.mountainName}
                     </Text>
                     <View className="px-2 py-0.5 rounded-full bg-emerald-50">
                         <Text className="text-[11px] font-bold text-emerald-600">완료</Text>
@@ -33,7 +42,7 @@ const HikingRecordCard = ({ record }) => (
                 </View>
                 <Text className="text-xs text-gray-400 mt-1">{record.date}</Text>
 
-                {/* 4분할 디테일 지표 그리드 */}
+                {/* 4분할 디테일 스탯 지표 */}
                 <View className="flex-row gap-1 mt-3">
                     <View className="flex-1 bg-gray-50 border border-gray-100 rounded-lg p-1.5 items-center justify-center">
                         <Clock size={12} color="#10B981" />
@@ -43,7 +52,7 @@ const HikingRecordCard = ({ record }) => (
                     <View className="flex-1 bg-gray-50 border border-gray-100 rounded-lg p-1.5 items-center justify-center">
                         <Move size={12} color="#3B82F6" />
                         <Text className="text-[8px] text-gray-400 mt-0.5">이동 거리</Text>
-                        <Text className="text-[10px] font-bold text-gray-800 mt-0.5" numberOfLines={1}>{record.distance}km</Text>
+                        <Text className="text-[10px] font-bold text-gray-800 mt-0.5" numberOfLines={1}>{record.distance}</Text>
                     </View>
                     <View className="flex-1 bg-gray-50 border border-gray-100 rounded-lg p-1.5 items-center justify-center">
                         <Flame size={12} color="#F59E0B" />
@@ -53,7 +62,7 @@ const HikingRecordCard = ({ record }) => (
                     <View className="flex-1 bg-gray-50 border border-gray-100 rounded-lg p-1.5 items-center justify-center">
                         <HeartPulse size={12} color="#EF4444" />
                         <Text className="text-[8px] text-gray-400 mt-0.5">{record.stat4Name}</Text>
-                        <Text className="text-[10px] font-bold text-gray-800 mt-0.5" numberOfLines={1}>{record.stat4Value}bpm</Text>
+                        <Text className="text-[10px] font-bold text-gray-800 mt-0.5" numberOfLines={1}>{record.stat4Value}</Text>
                     </View>
                 </View>
             </View>
@@ -99,40 +108,8 @@ export default function MyPage() {
     const [myPosts, setMyPosts] = useState([]);
     const [selectedMountain, setSelectedMountain] = useState('ALL');
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [hikingRecords, setHikingRecords] = useState([]);
 
-    // 이미지 기반 등산기록 더미 데이터
-    const [hikingRecords, setHikingRecords] = useState([
-        {
-            id: 1,
-            mountainName: "북한산",
-            courseName: "백운대 코스",
-            date: "2023. 10. 24일",
-            duration: "01:12",
-            distance: "12.5",
-            stat3Name: "칼로리",
-            stat3Value: "126",
-            stat4Name: "심박수",
-            stat4Value: "42",
-            mapImage: "https://via.placeholder.com/150",
-            period: "THIS_MONTH"
-        },
-        {
-            id: 2,
-            mountainName: "관악산",
-            courseName: "연주대 코스",
-            date: "2023. 10. 20일",
-            duration: "03:21",
-            distance: "4.3",
-            stat3Name: "칼로리",
-            stat3Value: "136",
-            stat4Name: "심박수",
-            stat4Value: "4.2",
-            mapImage: "https://via.placeholder.com/150",
-            period: "THIS_MONTH"
-        },
-    ]);
-
-    // mountainList는 hikingRecords 상태가 선언된 이후에 가져와야 오류가 나지 않습니다.
     const mountainList = ['ALL', ...new Set(hikingRecords.map(r => r.mountainName))];
 
     const [user, setUser] = useState({
@@ -143,11 +120,8 @@ export default function MyPage() {
         stats: { point: 0, like: 0 },
     });
 
+    // 💡 기존 주소 유지
     const BACKEND_URL = "http://10.0.2.2:8082";
-
-    useEffect(() => {
-        fetchUserInfo();
-    }, []);
 
     const fetchUserInfo = async () => {
         try {
@@ -158,11 +132,13 @@ export default function MyPage() {
             }
             const headers = { Authorization: `Bearer ${token}` };
 
-            const [userRes, countRes, likeCountRes, postsRes] = await Promise.all([
+            // 🌟 엔드포인트를 백엔드 컨트롤러에 정의된 주소(/api/health/workout-summary/my)로 정밀 수정!
+            const [userRes, countRes, likeCountRes, postsRes, hikingRes] = await Promise.all([
                 axios.get(`${BACKEND_URL}/api/auth/me`, { headers }),
                 axios.get(`${BACKEND_URL}/api/posts/my/count`, { headers }),
                 axios.get(`${BACKEND_URL}/api/likes/my/count`, { headers }),
-                axios.get(`${BACKEND_URL}/api/posts/my`, { headers })
+                axios.get(`${BACKEND_URL}/api/posts/my`, { headers }),
+                axios.get(`${BACKEND_URL}/api/health/workout-summary/my`, { headers }).catch(() => ({ data: [] }))
             ]);
 
             const mappedPosts = postsRes.data.map(post => ({
@@ -175,7 +151,53 @@ export default function MyPage() {
                 comments: post.commentCount || 0
             }));
 
+            // 📊 백엔드 WorkoutSummary 엔티티 결과 매핑 및 필터 파싱
+            const mappedHiking = (hikingRes.data || []).map((record, index) => {
+                let periodType = "ALL";
+
+                // 엔티티 자동 생성일 컬럼(createdAt) 기준 날짜 추출
+                const recordDateStr = record.createdAt || "";
+
+                if (recordDateStr) {
+                    const now = new Date();
+                    const currentYear = now.getFullYear();
+                    const currentMonth = now.getMonth() + 1;
+                    const thisMonthFilter = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+                    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+                    const lastYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+                    const lastMonthFilter = `${lastYear}-${String(lastMonth).padStart(2, '0')}`;
+
+                    if (recordDateStr.includes(thisMonthFilter)) {
+                        periodType = "THIS_MONTH";
+                    } else if (recordDateStr.includes(lastMonthFilter)) {
+                        periodType = "LAST_MONTH";
+                    }
+                }
+
+                const formattedDate = recordDateStr
+                    ? recordDateStr.split('T')[0].replace(/-/g, '. ')
+                    : "등산 완료";
+
+                return {
+                    id: record.id || index,
+                    // 백엔드 엔티티 필드인 trailName을 화면 UI 산 이름으로 매핑
+                    mountainName: record.trailName || "이름 없는 코스",
+                    courseName: "코스",
+                    date: formattedDate,
+                    // 백엔드의 totalTimeSeconds 단위를 시분초로 변환
+                    duration: formatTime(record.totalTimeSeconds),
+                    distance: record.totalDistance !== undefined ? `${record.totalDistance.toFixed(1)}km` : "0.0km",
+                    stat3Name: "칼로리",
+                    stat3Value: record.totalCalories !== undefined ? `${record.totalCalories}kcal` : "0kcal",
+                    stat4Name: "평균심박",
+                    stat4Value: record.avgHeartRate !== undefined ? `${record.avgHeartRate}bpm` : "0bpm",
+                    mapImage: null,
+                    period: periodType
+                };
+            });
+
             setMyPosts(mappedPosts);
+            setHikingRecords(mappedHiking);
             setUser({
                 name: userRes.data.nickname || userRes.data.name,
                 email: userRes.data.email,
@@ -184,11 +206,15 @@ export default function MyPage() {
                 stats: { point: countRes.data, like: likeCountRes.data }
             });
         } catch (error) {
-            console.error(error);
+            console.error("마이페이지 데이터 조회 실패:", error);
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchUserInfo();
+    }, []);
 
     const handlePostClick = (id, type) => {
         router.push(`/community/${id}`);
@@ -203,11 +229,8 @@ export default function MyPage() {
                     await AsyncStorage.removeItem("jwtToken");
                     router.replace('/');
                     sendMessage(
-                        {
-                            path: '/clear_jwt_token',
-                            data: 'logout'
-                        },
-                        (match) => console.log("✅ 워치 토큰 삭제 신호 전송 성공!"),
+                        { path: '/clear_jwt_token', data: 'logout' },
+                        () => console.log("✅ 워치 토큰 삭제 완료"),
                         (err) => console.error("❌ 워치 신호 전송 실패:", err)
                     );
                 }
@@ -215,7 +238,6 @@ export default function MyPage() {
         ]);
     };
 
-    // 필터링 변수 선언 영역 (기존에 분산되어 있던 로직 병합)
     const filteredPosts = myPosts.filter(post => activeTab === 'ALL' || post.type === activeTab);
 
     const filteredHikingRecords = hikingRecords.filter(record => {
@@ -323,8 +345,7 @@ export default function MyPage() {
                                         <TouchableOpacity
                                             key={name}
                                             onPress={() => { setSelectedMountain(name); setDropdownOpen(false); }}
-                                            className={`px-4 py-3 border-b border-gray-100 flex-row justify-between items-center
-                                             ${selectedMountain === name ? 'bg-gray-50' : 'bg-white'}`}
+                                            className={`px-4 py-3 border-b border-gray-100 flex-row justify-between items-center ${selectedMountain === name ? 'bg-gray-50' : 'bg-white'}`}
                                         >
                                             <Text className={`text-xs ${selectedMountain === name ? 'text-emerald-600 font-bold' : 'text-gray-700'}`}>
                                                 {name === 'ALL' ? '전체 산' : name}
