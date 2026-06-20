@@ -5,7 +5,8 @@ import { useRouter } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sendMessage } from 'react-native-wear-connectivity';
-// [추가] 등산 기록 카드 컴포넌트
+
+// 등산 기록 카드 컴포넌트
 const HikingRecordCard = ({ record }) => (
     <View className="bg-white border border-gray-100 rounded-2xl p-4 mb-3 shadow-sm">
         <View className="flex-row gap-3">
@@ -94,10 +95,12 @@ export default function MyPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("ALL");
-    const [hikingTab, setHikingTab] = useState("ALL"); // [추가] 등산 기록 필터 탭 상태
+    const [hikingTab, setHikingTab] = useState("ALL");
     const [myPosts, setMyPosts] = useState([]);
+    const [selectedMountain, setSelectedMountain] = useState('ALL');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
 
-    // [추가] 이미지 기반 등산기록 더미 데이터 (추후 API 연동 대체 가능)
+    // 이미지 기반 등산기록 더미 데이터
     const [hikingRecords, setHikingRecords] = useState([
         {
             id: 1,
@@ -110,8 +113,8 @@ export default function MyPage() {
             stat3Value: "126",
             stat4Name: "심박수",
             stat4Value: "42",
-            mapImage: "https://via.placeholder.com/150", // 실제 지도 데이터 URL 매핑 필요
-            period: "THIS_MONTH" // 예시용 기간 태그
+            mapImage: "https://via.placeholder.com/150",
+            period: "THIS_MONTH"
         },
         {
             id: 2,
@@ -128,6 +131,9 @@ export default function MyPage() {
             period: "THIS_MONTH"
         },
     ]);
+
+    // mountainList는 hikingRecords 상태가 선언된 이후에 가져와야 오류가 나지 않습니다.
+    const mountainList = ['ALL', ...new Set(hikingRecords.map(r => r.mountainName))];
 
     const [user, setUser] = useState({
         name: "",
@@ -185,11 +191,9 @@ export default function MyPage() {
     };
 
     const handlePostClick = (id, type) => {
-        // [중요] app 폴더 내에 정의된 라우터 경로로 이동해야 합니다.
-        // 타입에 따라 다르게 보내고 싶다면 app 폴더 구조를 맞춰야 합니다.
-        // 지금은 community 상세페이지 하나로 통합하는 것을 추천합니다.
         router.push(`/community/${id}`);
     };
+
     const handleLogout = async () => {
         Alert.alert("로그아웃", "정말 로그아웃 하시겠습니까?", [
             { text: "취소", style: "cancel" },
@@ -200,26 +204,24 @@ export default function MyPage() {
                     router.replace('/');
                     sendMessage(
                         {
-                            path: '/clear_jwt_token', // 삭제 전용 경로
+                            path: '/clear_jwt_token',
                             data: 'logout'
                         },
                         (match) => console.log("✅ 워치 토큰 삭제 신호 전송 성공!"),
                         (err) => console.error("❌ 워치 신호 전송 실패:", err)
                     );
                 }
-
             }
         ]);
-
     };
 
+    // 필터링 변수 선언 영역 (기존에 분산되어 있던 로직 병합)
     const filteredPosts = myPosts.filter(post => activeTab === 'ALL' || post.type === activeTab);
 
     const filteredHikingRecords = hikingRecords.filter(record => {
-        if (hikingTab === 'ALL') return true;
-        if (hikingTab === 'THIS_MONTH') return record.period === 'THIS_MONTH';
-        if (hikingTab === 'LAST_MONTH') return record.period === 'LAST_MONTH';
-        return true;
+        const tabMatch = hikingTab === 'ALL' || record.period === hikingTab;
+        const mountainMatch = selectedMountain === 'ALL' || record.mountainName === selectedMountain;
+        return tabMatch && mountainMatch;
     });
 
     if (loading) return (
@@ -279,10 +281,11 @@ export default function MyPage() {
 
                 <View className="h-2 bg-gray-50 mb-6" />
 
+                {/* 나의 등산 기록 섹션 */}
                 <View className="px-5 mb-4">
                     <Text className="text-lg font-bold text-gray-900 mb-4">나의 등산 기록</Text>
 
-                    {/* 등산 기록 탭 필터 필터 */}
+                    {/* 등산 기록 탭 필터 */}
                     <View className="flex-row justify-between items-center mb-4">
                         <View className="flex-row gap-2">
                             {[
@@ -302,11 +305,36 @@ export default function MyPage() {
                             ))}
                         </View>
 
-                        {/* 산별 보기 드롭다운 버튼 모양 유지 */}
-                        <TouchableOpacity className="flex-row items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl">
-                            <Text className="text-xs text-gray-600 mr-1 font-semibold">산별 보기</Text>
-                            <Text className="text-[10px] text-gray-500">▼</Text>
-                        </TouchableOpacity>
+                        {/* 드롭다운 버튼 */}
+                        <View style={{ position: 'relative' }}>
+                            <TouchableOpacity
+                                onPress={() => setDropdownOpen(!dropdownOpen)}
+                                className="flex-row items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl"
+                            >
+                                <Text className="text-xs text-gray-600 mr-1 font-semibold">
+                                    {selectedMountain === 'ALL' ? '산별 보기' : selectedMountain}
+                                </Text>
+                                <Text className="text-[10px] text-gray-500">{dropdownOpen ? '▲' : '▼'}</Text>
+                            </TouchableOpacity>
+
+                            {dropdownOpen && (
+                                <View className="absolute right-0 top-9 bg-white border border-gray-200 rounded-xl shadow-md z-50 w-32 overflow-hidden">
+                                    {mountainList.map((name) => (
+                                        <TouchableOpacity
+                                            key={name}
+                                            onPress={() => { setSelectedMountain(name); setDropdownOpen(false); }}
+                                            className={`px-4 py-3 border-b border-gray-100 flex-row justify-between items-center
+                                             ${selectedMountain === name ? 'bg-gray-50' : 'bg-white'}`}
+                                        >
+                                            <Text className={`text-xs ${selectedMountain === name ? 'text-emerald-600 font-bold' : 'text-gray-700'}`}>
+                                                {name === 'ALL' ? '전체 산' : name}
+                                            </Text>
+                                            {selectedMountain === name && <Text className="text-emerald-500 text-xs">✓</Text>}
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
                     </View>
 
                     {/* 등산 기록 리스트 렌더링 */}
@@ -322,9 +350,8 @@ export default function MyPage() {
                 </View>
 
                 <View className="h-2 bg-gray-50 my-6" />
-                {/* ================================================================= */}
 
-                {/* 기존 내 활동 내역 섹션 */}
+                {/* 내 활동 내역 섹션 */}
                 <View className="px-5 mb-4">
                     <Text className="text-lg font-bold text-gray-900 mb-4">내 활동 내역</Text>
                     <View className="flex-row gap-2">
@@ -356,7 +383,7 @@ export default function MyPage() {
                     )}
                 </View>
 
-                {/* 하단 시스템12 메뉴 */}
+                {/* 하단 시스템 메뉴 */}
                 <View className="px-5 mb-10 gap-3">
                     <TouchableOpacity onPress={handleLogout} className="w-full py-4 bg-white border border-gray-200 rounded-2xl items-center">
                         <Text className="font-bold text-gray-700">로그아웃</Text>

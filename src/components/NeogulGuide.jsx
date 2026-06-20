@@ -1,40 +1,31 @@
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { View, Text, Image, TouchableOpacity, Animated } from "react-native";
-import { MessageCircle } from 'lucide-react-native';
 
 const NeogulGuide = ({ onOpen }) => {
-    const [isHovered, setIsHovered] = useState(false);
-
-    // 1. 애니메이션 설정 (framer-motion 대체)
     const scaleAnim = useRef(new Animated.Value(1)).current;
-    const tooltipAnim = useRef(new Animated.Value(0)).current;
 
-    // 터치(Hover 대용) 시 애니메이션
     const handlePressIn = () => {
-        setIsHovered(true);
-        Animated.parallel([
-            Animated.spring(scaleAnim, { toValue: 1.05, useNativeDriver: true }),
-            Animated.timing(tooltipAnim, { toValue: 1, duration: 200, useNativeDriver: true })
-        ]).start();
+        Animated.spring(scaleAnim, {
+            toValue: 1.05,
+            useNativeDriver: true,
+        }).start();
     };
 
     const handlePressOut = () => {
-        setIsHovered(false);
-        Animated.parallel([
-            Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }),
-            Animated.timing(tooltipAnim, { toValue: 0, duration: 200, useNativeDriver: true })
-        ]).start();
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+        }).start();
     };
 
     return (
         <Animated.View
             style={{
+                position: "absolute",
+                bottom: 100,
+                right: 20,
                 transform: [{ scale: scaleAnim }],
-                position: 'absolute',
-                bottom: 90,
-                left: '50%',
-                marginLeft: 120,
-                zIndex: 9999
+                zIndex: 9999,
             }}
         >
             <TouchableOpacity
@@ -42,47 +33,81 @@ const NeogulGuide = ({ onOpen }) => {
                 onPress={onOpen}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
-                className="items-center"
             >
-                <View className="relative items-center">
+                <View style={{ alignItems: "center" }}>
 
-                    {/* --- 말풍선 영역 (툴팁) --- */}
-                    <Animated.View
+                    {/* 말풍선 */}
+                    <View
                         style={{
-                            opacity: tooltipAnim,
-                            transform: [{ translateY: tooltipAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0, -8]
-                                }) }],
-                            position: 'absolute',
-                            top: -75,
-                            left: -80,
-                            pointerEvents: 'none'
+                            position: "absolute",
+                            bottom: 65,
+                            right: 45,
+                            backgroundColor: "#E8F8E8",
+                            width: 100,
+                            minHeight: 55,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            paddingHorizontal: 14,
+                            borderRadius: 30,
+
+                            // 그림자 설정
+                            shadowColor: "#000",
+                            shadowOpacity: 0.12,
+                            shadowRadius: 4,
+                            shadowOffset: { width: 0, height: 2 },
+                            elevation: 4,
+
+                            // 꼬리가 잘리지 않도록 설정
+                            overflow: "visible",
                         }}
                     >
-                        <View className="relative items-center justify-center">
-                            {/* 말풍선 아이콘 변형 (scale-x-[-1] 및 타원형 scale 적용) */}
-                            <MessageCircle
-                                size={110}
-                                strokeWidth={0}
-                                fill="#C1E8AF"
-                                style={{ transform: [{ scaleX: -1.2 }, { scaleY: 0.8 }] }}
-                            />
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                fontWeight: "700",
+                                color: "#2E7D32",
+                                textAlign: "center",
+                                lineHeight: 18,
+                                zIndex: 2,
+                            }}
+                        >
+                            궁금한게{"\n"}있으신가요?!
+                        </Text>
 
-                            {/* 아이콘 내부 텍스트 */}
-                            <View className="absolute top-[30%] left-[32%] -translate-x-1/2">
-                                <Text className="text-[11px] font-bold text-[#2D4B22] text-center">
-                                    준비됐나요?{"\n"}산으로 떠나요!
-                                </Text>
-                            </View>
-                        </View>
-                    </Animated.View>
+                        {/* 말풍선 꼬리: 위치를 곡선 안쪽으로 당겨서 깔끔하게 수정 */}
+                        <View
+                            style={{
+                                position: "absolute",
+                                bottom: -12,        // 꼬리가 아래로 뻗어나오는 길이
+                                right: 25,          // ⭐️ 곡선이 끝나는 바닥 평면 쪽으로 이동 (핵심)
+                                width: 0,
+                                height: 0,
+                                backgroundColor: "transparent",
+                                borderStyle: "solid",
+                                borderTopWidth: 15,    // 꼬리의 높이
+                                borderLeftWidth: 15,   // 꼬리가 왼쪽으로 뻗는 너비
+                                borderBottomWidth: 0,
+                                borderRightWidth: 0,
+                                borderTopColor: "#E8F8E8", // 말풍선 배경색
+                                borderLeftColor: "transparent",
+                                borderBottomColor: "transparent",
+                                borderRightColor: "transparent",
+                                zIndex: -1,         // 둥근 모서리 뒤로 숨겨서 이음새 제거
+                            }}
+                        />
+                    </View>
 
-                    {/* 너굴 가이드 이미지 (좌우 반전) */}
+                    {/* 너굴 이미지 */}
                     <Image
                         source={require("../../assets/images/neogulGuide.jpeg")}
-                        className="w-16 h-16 rounded-full border-4 border-white shadow-md object-cover"
-                        style={{ transform: [{ scaleX: -1 }] }}
+                        style={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: 32,
+                            borderWidth: 3,
+                            borderColor: "#fff",
+                            transform: [{ scaleX: -1 }],
+                        }}
                     />
                 </View>
             </TouchableOpacity>

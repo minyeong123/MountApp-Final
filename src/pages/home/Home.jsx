@@ -18,7 +18,7 @@ const logo = require("../../../assets/images/logo.png");
 const getDebuggingUrl = () => {
     //return "http://172.16.106.105:8082";
     return "http://10.0.2.2:8082";
-    }
+}
 
 const API_BASE_URL = getDebuggingUrl();
 const ENCODING_KEY = "D4HOdxG7MU6ChcZPPl6q2mG2In%2FDM%2BwjAVif6pJFHS91I52JjltPYQOl5b26uQ1EBE7FuXWljJOodT1Ge4iLHA%3D%3D";
@@ -141,8 +141,8 @@ export default function Home() {
                         </View>
                     </View>
 
-                    <View className="mb-6">
-                        <Text className="text-lg font-bold mb-2 pb-1 border-b border-gray-100">산악 가이드 정보</Text>
+                    <View className="mb-10">
+                        <Text className="text-[20px] font-black mb-2 pb-1 border-b border-gray-100">산악 가이드 정보</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             {loading ? (
                                 <ActivityIndicator size="large" color="#15803d" />
@@ -152,10 +152,10 @@ export default function Home() {
                                 mountains.map((mt) => (
                                     <TouchableOpacity
                                         key={mt.id}
-                                        className="w-[220px] mr-4 bg-white rounded-2xl border border-gray-200 overflow-hidden"
+                                        className="w-[230px] mr-4 bg-white rounded-2xl border border-gray-200 overflow-hidden"
                                         onPress={() => router.push(`/mountain/${mt.id}`)}
                                     >
-                                        <View className="h-[100px] bg-gray-50 items-center justify-center">
+                                        <View className="h-[120px] bg-gray-50 items-center justify-center">
                                             <Image source={getSafeImageSource(mt.imageUrl?.split(",")[0])} className="w-full h-full" resizeMode="cover" />
                                         </View>
                                         <View className="p-3">
@@ -168,7 +168,7 @@ export default function Home() {
                         </ScrollView>
                     </View>
 
-                    <View className="mb-6">
+                    <View className="mb-10">
                         <View className="flex-row items-center mb-2">
                             <Siren size={20} color="#b91c1c" />
                             <Text className="text-lg font-bold text-[#b91c1c] ml-1.5">실시간 재난 알림</Text>
@@ -182,7 +182,7 @@ export default function Home() {
                         </View>
                     </View>
 
-                    <View className="bg-gray-100 p-5 rounded-2xl border-l-4 border-gray-400 mb-8">
+                    <View className="bg-gray-100 p-5 rounded-2xl border-l-4 border-gray-400 mb-20">
                         <Text className="text-base font-bold mb-2">☑️ 유의사항</Text>
                         <Text className="text-sm text-gray-600 mb-1">• 등산 전 반드시 기상청 정보를 확인하세요.</Text>
                         <Text className="text-sm text-gray-600">• 비상 상황 발생 시 즉시 119에 신고하세요.</Text>

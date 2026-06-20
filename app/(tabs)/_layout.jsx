@@ -47,19 +47,19 @@ export default function TabLayout() {
                     }}
                 />
                 <Tabs.Screen
-                    name="mate"
-                    options={{
-                        title: "메이트",
-                        tabBarIcon: ({ color }) => <UserSearch size={24} color={color} />,
-                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>메이트</Text>,
-                    }}
-                />
-                <Tabs.Screen
                     name="community"
                     options={{
                         title: "커뮤니티",
                         tabBarIcon: ({ color }) => <MessageSquareText size={24} color={color} />,
                         tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>커뮤니티</Text>,
+                    }}
+                />
+                <Tabs.Screen
+                    name="mate"
+                    options={{
+                        title: "메이트",
+                        tabBarIcon: ({ color }) => <UserSearch size={24} color={color} />,
+                        tabBarLabel: ({ color }) => <Text style={[styles.tabLabel, { color }]}>메이트</Text>,
                     }}
                 />
                 <Tabs.Screen

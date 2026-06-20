@@ -1,6 +1,7 @@
 "use no memo";
 
 import React, { useEffect, useState, useRef } from "react";
+import { useRouter } from 'expo-router';
 import { View, Text, Image, ScrollView, TouchableOpacity, Modal, Dimensions, Alert } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
@@ -35,7 +36,6 @@ const safeSendMessage = (payload) => {
     }
 };
 
-// 🌟 [변경 포인트] 외부(검색창)에서 특정 코스를 바로 띄우기 위해 initialTrail, onClose 프롭스 추가
 export default function MountainCourse({ id, initialTrail = null, onClose = null }) {
     const [selectedTrail, setSelectedTrail] = useState(null);
     const [isNavigating, setIsNavigating] = useState(false);
@@ -56,13 +56,10 @@ export default function MountainCourse({ id, initialTrail = null, onClose = null
     const heartRateSumRef = useRef(0);
     const heartRateCountRef = useRef(0);
 
-    // 검색창 연동 대응: id가 수치형이 아닐 수 있으므로 안전 처리
     const trails = MOUNTAIN_DATA[String(id)] || [];
 
-    // 🌟 외부(검색창)에서 코스를 다이렉트로 주입했을 때 가로채서 모달 활성화하기
     useEffect(() => {
         if (initialTrail) {
-            // 주입된 코스 원본 데이터를 매핑
             setSelectedTrail(initialTrail);
         }
     }, [initialTrail]);
@@ -213,7 +210,9 @@ export default function MountainCourse({ id, initialTrail = null, onClose = null
                         if (currentAlt > maxAltitudeRef.current) maxAltitudeRef.current = currentAlt;
 
                         const gpsPayload = JSON.stringify({ lat: latitude, lng: longitude, alt: currentAlt });
-                        safeSendMessage({ path: '/gps_data', data: gpsPayload });
+
+                        // 👣 트래킹 시 워치로 GPS 정보 전송
+                        // safeSendMessage({ path: '/gps_data', data: gpsPayload });
 
                         webViewRef.current?.postMessage(JSON.stringify({ lat: latitude, lng: longitude, panTo: false }));
 
@@ -256,8 +255,8 @@ export default function MountainCourse({ id, initialTrail = null, onClose = null
         let dataInterval = null;
         if (isNavigating && !isPaused) {
             timer = setInterval(() => setSeconds((prev) => prev + 1), 1000);
-            fetchLatestBiometrics();
-            dataInterval = setInterval(() => { fetchLatestBiometrics(); }, 2000);
+            // fetchLatestBiometrics();
+            // dataInterval = setInterval(() => { fetchLatestBiometrics(); }, 2000);
         }
         return () => {
             if (timer) clearInterval(timer);
@@ -279,17 +278,20 @@ export default function MountainCourse({ id, initialTrail = null, onClose = null
         maxAltitudeRef.current = 0;
         heartRateSumRef.current = 0;
         heartRateCountRef.current = 0;
-        safeSendMessage({ path: '/workout_control', data: 'start' });
+        // safeSendMessage({ path: '/workout_control', data: 'start' });
     };
 
     const togglePause = () => {
         isPausedRef.current = !isPaused;
         setIsPaused(!isPaused);
-        safeSendMessage({ path: '/workout_control', data: !isPaused ? 'pause' : 'start' });
+        // safeSendMessage({ path: '/workout_control', data: !isPaused ? 'pause' : 'start' });
     };
 
-    const stopNavigation = () => {
-        if (isNavigatingRef.current) saveWorkoutSummary();
+    // 실제 종료 처리 (shouldSave에 따라 DB 저장 여부 결정)
+    const stopNavigation = (shouldSave = true) => {
+        if (shouldSave && isNavigatingRef.current) {
+            saveWorkoutSummary(); // ✅ 저장 선택 시에만 DB 전송
+        }
         isNavigatingRef.current = false;
         isPausedRef.current = false;
         setIsNavigating(false);
@@ -298,120 +300,179 @@ export default function MountainCourse({ id, initialTrail = null, onClose = null
         distanceRef.current = 0;
         setWorkoutData({ time: "00:00:00", distance: 0 });
         setExtraMetrics({ altitude: 0, calories: 0, heartRate: 0, stepCount: 0 });
-        safeSendMessage({ path: '/workout_control', data: 'stop' });
         lastLocationRef.current = null;
+        maxAltitudeRef.current = 0;
+        heartRateSumRef.current = 0;
+        heartRateCountRef.current = 0;
+        // safeSendMessage({ path: '/workout_control', data: 'stop' });
         if (locationSubscriptionRef.current) {
             locationSubscriptionRef.current.remove();
             locationSubscriptionRef.current = null;
         }
     };
 
-    // 🌟 [변경 포인트] 닫기 제어 통합 처리 함수
+    // 운동 종료 버튼 → 저장 여부 Alert 확인
+    const router = useRouter();
+
+    const confirmStop = () => {
+        Alert.alert(
+            "운동 종료",
+            "운동 기록을 저장하시겠습니까?",
+            [
+                {
+                    text: "저장 안함",
+                    style: "destructive",
+                    onPress: () => {
+                        stopNavigation(false); // 기록 저장 안 하고 화면 유지 (창만 닫힘)
+                    },
+                },
+                {
+                    text: "저장",
+                    onPress: async () => {
+                        await stopNavigation(true);  // DB 저장
+
+                        Alert.alert("완료", "운동 기록이 저장되었습니다.", [
+                            { text: "확인", onPress: () => router.replace('/mypage') } // 마이페이지로 이동
+                        ]);
+                    },
+                },
+            ],
+            { cancelable: false }
+        );
+    };
+    // 모달 닫기 — 운동 중이면 종료 확인 먼저
     const handleCloseModal = () => {
+        if (isNavigatingRef.current) {
+            confirmStop();
+            return;
+        }
         setSelectedTrail(null);
-        stopNavigation();
-        if (onClose) onClose(); // 검색창에서 열렸을 경우 검색창 상태도 해제 유도
+        if (onClose) onClose();
     };
 
-    // 🌟 만약 외부(검색창)에서 단일 컴포넌트 호출형태로 열렸다면, 리스트 목록은 안 보여주고 모달 본체만 활성화
+    // 운동 중 버튼 UI
+    const renderWorkoutControls = () => (
+        <View className="gap-4">
+            <View className="flex-row gap-3">
+                <View className="flex-1 bg-emerald-900 p-4 rounded-2xl">
+                    <Text className="text-[10px] text-emerald-300 font-bold mb-1">⏱️ 운동 시간</Text>
+                    <Text className="text-2xl font-black text-white">{workoutData.time}</Text>
+                </View>
+                <View className="flex-1 bg-white border-2 border-emerald-900 p-4 rounded-2xl">
+                    <Text className="text-[10px] text-gray-400 font-bold mb-1">👣 이동 거리</Text>
+                    <Text className="text-2xl font-black text-emerald-900">
+                        {workoutData.distance}<Text className="text-xs text-gray-400">km</Text>
+                    </Text>
+                </View>
+            </View>
+            <View className="flex-row justify-between">
+                {[
+                    { icon: <Mountain size={14} color="#3b82f6" />, label: '고도', value: `${extraMetrics.altitude}m` },
+                    { icon: <Flame size={14} color="#f97316" />, label: '칼로리', value: `${extraMetrics.calories}kcal` },
+                    { icon: <Heart size={14} color="#ef4444" />, label: '심박수', value: `${extraMetrics.heartRate}bpm` },
+                    { icon: <MapPin size={14} color="#10b981" />, label: '남은거리', value: `${Math.max(0, (parseDistanceNumber(selectedTrail?.distance) - workoutData.distance)).toFixed(1)}km` },
+                ].map((item, i) => (
+                    <View key={i} className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100 items-center mx-1">
+                        {item.icon}
+                        <Text className="text-[9px] text-gray-400 font-bold mt-1">{item.label}</Text>
+                        <Text className="text-xs font-bold text-gray-800 mt-0.5">{item.value}</Text>
+                    </View>
+                ))}
+            </View>
+            <View className="flex-row gap-3 mt-2">
+                <TouchableOpacity
+                    onPress={togglePause}
+                    className={`flex-1 py-4 rounded-xl flex-row items-center justify-center gap-2 ${isPaused ? 'bg-amber-500' : 'bg-gray-100'}`}
+                    activeOpacity={0.8}
+                >
+                    {isPaused
+                        ? <><Play size={18} color="white" /><Text className="text-white font-bold">재시작</Text></>
+                        : <><Pause size={18} color="#6b7280" /><Text className="text-gray-500 font-bold">일시정지</Text></>
+                    }
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={confirmStop}
+                    className="flex-[1.5] py-4 bg-red-500 rounded-xl items-center justify-center"
+                    activeOpacity={0.8}
+                >
+                    <Text className="text-white font-bold">운동 종료</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
+    // 시작 전 버튼 UI
+    const renderStartControls = (trail) => (
+        <View>
+            <View className="flex-row gap-3 mb-4">
+                <View className="flex-1 bg-green-50 p-4 rounded-2xl flex-row items-center gap-3">
+                    <View className="bg-green-700 p-2 rounded-lg"><Timer size={16} color="white" /></View>
+                    <View>
+                        <Text className="text-[10px] text-green-700 font-bold">예상 시간</Text>
+                        <Text className="font-bold text-gray-800 text-sm">{trail?.uptime || trail?.duration}</Text>
+                    </View>
+                </View>
+                <View className="flex-1 bg-emerald-50 p-4 rounded-2xl flex-row items-center gap-3">
+                    <View className="bg-emerald-700 p-2 rounded-lg"><Footprints size={16} color="white" /></View>
+                    <View>
+                        <Text className="text-[10px] text-emerald-700 font-bold">총 거리</Text>
+                        <Text className="font-bold text-gray-800 text-sm">{trail?.distance}</Text>
+                    </View>
+                </View>
+            </View>
+            <TouchableOpacity onPress={startNavigation} className="w-full py-4 bg-emerald-950 rounded-xl items-center" activeOpacity={0.8}>
+                <Text className="text-white font-bold text-base">운동 시작</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    // 공통 모달 내부 콘텐츠
+    const renderModalContent = () => (
+        <View className="flex-1 bg-black/40 justify-end">
+            <View className="bg-white rounded-t-[32px] max-h-[92%] overflow-hidden">
+                <View className="flex-row justify-between items-center p-5 border-b border-gray-100">
+                    <Text className="font-bold text-gray-900 text-lg">{selectedTrail?.name}</Text>
+                    <TouchableOpacity onPress={handleCloseModal} className="p-1.5 bg-gray-100 rounded-full">
+                        <X size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={{ height: height * 0.4 }} className="w-full bg-gray-50 relative">
+                    {selectedTrail && (
+                        <WebView
+                            ref={webViewRef}
+                            originWhitelist={['*']}
+                            source={{ html: generateMapHtml(selectedTrail) }}
+                            className="flex-1"
+                            javaScriptEnabled
+                            domStorageEnabled
+                            mixedContentMode="always"
+                        />
+                    )}
+                    {isNavigating && (
+                        <TouchableOpacity onPress={moveToCurrentLocation} className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-sm">
+                            <LocateFixed size={20} color="#059669" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                <View className="p-6">
+                    {!isNavigating ? renderStartControls(selectedTrail) : renderWorkoutControls()}
+                </View>
+            </View>
+        </View>
+    );
+
+    // 외부(검색창)에서 단일 코스로 진입한 경우
     if (initialTrail) {
         return (
             <Modal visible={!!selectedTrail} transparent animationType="slide" onRequestClose={handleCloseModal}>
-                <View className="flex-1 bg-black/40 justify-end">
-                    <View className="bg-white rounded-t-[32px] max-h-[92%] overflow-hidden">
-                        <View className="flex-row justify-between items-center p-5 border-b border-gray-100">
-                            <Text className="font-bold text-gray-900 text-lg">{selectedTrail?.name}</Text>
-                            <TouchableOpacity onPress={handleCloseModal} className="p-1.5 bg-gray-100 rounded-full">
-                                <X size={20} color="#6b7280" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={{ height: height * 0.4 }} className="w-full bg-gray-50 relative">
-                            {selectedTrail && (
-                                <WebView
-                                    ref={webViewRef}
-                                    originWhitelist={['*']}
-                                    source={{ html: generateMapHtml(selectedTrail) }}
-                                    className="flex-1"
-                                    javaScriptEnabled
-                                    domStorageEnabled
-                                    mixedContentMode="always"
-                                />
-                            )}
-                            {isNavigating && (
-                                <TouchableOpacity onPress={moveToCurrentLocation} className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-sm">
-                                    <LocateFixed size={20} color="#059669" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-
-                        <View className="p-6">
-                            {!isNavigating ? (
-                                <View>
-                                    <View className="flex-row gap-3 mb-4">
-                                        <View className="flex-1 bg-green-50 p-4 rounded-2xl flex-row items-center gap-3">
-                                            <View className="bg-green-700 p-2 rounded-lg"><Timer size={16} color="white" /></View>
-                                            <View>
-                                                <Text className="text-[10px] text-green-700 font-bold">예상 시간</Text>
-                                                <Text className="font-bold text-gray-800 text-sm">{selectedTrail?.uptime || selectedTrail?.duration}</Text>
-                                            </View>
-                                        </View>
-                                        <View className="flex-1 bg-emerald-50 p-4 rounded-2xl flex-row items-center gap-3">
-                                            <View className="bg-emerald-700 p-2 rounded-lg"><Footprints size={16} color="white" /></View>
-                                            <View>
-                                                <Text className="text-[10px] text-emerald-700 font-bold">총 거리</Text>
-                                                <Text className="font-bold text-gray-800 text-sm">{selectedTrail?.distance}</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                    <TouchableOpacity onPress={startNavigation} className="w-full py-4 bg-emerald-950 rounded-xl items-center" activeOpacity={0.8}>
-                                        <Text className="text-white font-bold text-base">운동 시작</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ) : (
-                                <View className="gap-4">
-                                    <View className="flex-row gap-3">
-                                        <View className="flex-1 bg-emerald-900 p-4 rounded-2xl">
-                                            <Text className="text-[10px] text-emerald-300 font-bold mb-1">⏱️ 운동 시간</Text>
-                                            <Text className="text-2xl font-black text-white">{workoutData.time}</Text>
-                                        </View>
-                                        <View className="flex-1 bg-white border-2 border-emerald-900 p-4 rounded-2xl">
-                                            <Text className="text-[10px] text-gray-400 font-bold mb-1">👣 이동 거리</Text>
-                                            <Text className="text-2xl font-black text-emerald-900">{workoutData.distance}<Text className="text-xs text-gray-400">km</Text></Text>
-                                        </View>
-                                    </View>
-                                    <View className="flex-row justify-between">
-                                        {[
-                                            { icon: <Mountain size={14} color="#3b82f6" />, label: '고도', value: `${extraMetrics.altitude}m` },
-                                            { icon: <Flame size={14} color="#f97316" />, label: '칼로리', value: `${extraMetrics.calories}kcal` },
-                                            { icon: <Heart size={14} color="#ef4444" />, label: '심박수', value: `${extraMetrics.heartRate}bpm` },
-                                            { icon: <MapPin size={14} color="#10b981" />, label: '남은거리', value: `${Math.max(0, (parseDistanceNumber(selectedTrail?.distance) - workoutData.distance)).toFixed(1)}km` },
-                                        ].map((item, i) => (
-                                            <View key={i} className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100 items-center mx-1">
-                                                {item.icon}
-                                                <Text className="text-[9px] text-gray-400 font-bold mt-1">{item.label}</Text>
-                                                <Text className="text-xs font-bold text-gray-800 mt-0.5">{item.value}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                    <View className="flex-row gap-3 mt-2">
-                                        <TouchableOpacity onPress={togglePause} className={`flex-1 py-4 rounded-xl flex-row items-center justify-center gap-2 ${isPaused ? 'bg-amber-500' : 'bg-gray-100'}`} activeOpacity={0.8}>
-                                            {isPaused ? <><Play size={18} color="white" /><Text className="text-white font-bold">재시작</Text></> : <><Pause size={18} color="#6b7280" /><Text className="text-gray-500 font-bold">일시정지</Text></>}
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={stopNavigation} className="flex-[1.5] py-4 bg-red-500 rounded-xl items-center justify-center" activeOpacity={0.8}>
-                                            <Text className="text-white font-bold">운동 종료</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                </View>
+                {renderModalContent()}
             </Modal>
         );
     }
 
-    // 기존의 산 상세 하단 고정형 리스트 UI 출력 부분
+    // 기존 산 상세 리스트 UI
     return (
         <View className="flex-1 bg-white px-4 pt-4">
             <View className="flex-row justify-between items-center mb-4">
@@ -423,7 +484,12 @@ export default function MountainCourse({ id, initialTrail = null, onClose = null
 
             <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
                 {trails.map((trail, index) => (
-                    <TouchableOpacity key={trail.id || index} onPress={() => setSelectedTrail(trail)} className="flex-row bg-white rounded-2xl h-28 overflow-hidden border border-gray-100 mb-3" activeOpacity={0.7}>
+                    <TouchableOpacity
+                        key={trail.id || index}
+                        onPress={() => setSelectedTrail(trail)}
+                        className="flex-row bg-white rounded-2xl h-28 overflow-hidden border border-gray-100 mb-3"
+                        activeOpacity={0.7}
+                    >
                         <Image source={getTrailImage(trail)} className="w-28 h-full" resizeMode="cover" />
                         <View className="flex-1 p-3 justify-between">
                             <View>
@@ -446,88 +512,7 @@ export default function MountainCourse({ id, initialTrail = null, onClose = null
             </ScrollView>
 
             <Modal visible={!!selectedTrail} transparent animationType="slide" onRequestClose={handleCloseModal}>
-                {/* ... 중복되는 모달 내부 내용은 가독성을 위해 생략, 위 코드와 완전히 동일하게 작동 ... */}
-                {/* (기존 원본과 동일) */}
-                <View className="flex-1 bg-black/40 justify-end">
-                    <View className="bg-white rounded-t-[32px] max-h-[92%] overflow-hidden">
-                        <View className="flex-row justify-between items-center p-5 border-b border-gray-100">
-                            <Text className="font-bold text-gray-900 text-lg">{selectedTrail?.name}</Text>
-                            <TouchableOpacity onPress={handleCloseModal} className="p-1.5 bg-gray-100 rounded-full">
-                                <X size={20} color="#6b7280" />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={{ height: height * 0.4 }} className="w-full bg-gray-50 relative">
-                            {selectedTrail && (
-                                <WebView ref={webViewRef} originWhitelist={['*']} source={{ html: generateMapHtml(selectedTrail) }} className="flex-1" javaScriptEnabled domStorageEnabled mixedContentMode="always" />
-                            )}
-                            {isNavigating && (
-                                <TouchableOpacity onPress={moveToCurrentLocation} className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-sm">
-                                    <LocateFixed size={20} color="#059669" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                        <View className="p-6">
-                            {!isNavigating ? (
-                                <View>
-                                    <View className="flex-row gap-3 mb-4">
-                                        <View className="flex-1 bg-green-50 p-4 rounded-2xl flex-row items-center gap-3">
-                                            <View className="bg-green-700 p-2 rounded-lg"><Timer size={16} color="white" /></View>
-                                            <View>
-                                                <Text className="text-[10px] text-green-700 font-bold">예상 시간</Text>
-                                                <Text className="font-bold text-gray-800 text-sm">{selectedTrail?.uptime}</Text>
-                                            </View>
-                                        </View>
-                                        <View className="flex-1 bg-emerald-50 p-4 rounded-2xl flex-row items-center gap-3">
-                                            <View className="bg-emerald-700 p-2 rounded-lg"><Footprints size={16} color="white" /></View>
-                                            <View>
-                                                <Text className="text-[10px] text-emerald-700 font-bold">총 거리</Text>
-                                                <Text className="font-bold text-gray-800 text-sm">{selectedTrail?.distance}</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                    <TouchableOpacity onPress={startNavigation} className="w-full py-4 bg-emerald-950 rounded-xl items-center" activeOpacity={0.8}>
-                                        <Text className="text-white font-bold text-base">운동 시작</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ) : (
-                                <View className="gap-4">
-                                    <View className="flex-row gap-3">
-                                        <View className="flex-1 bg-emerald-900 p-4 rounded-2xl">
-                                            <Text className="text-[10px] text-emerald-300 font-bold mb-1">⏱️ 운동 시간</Text>
-                                            <Text className="text-2xl font-black text-white">{workoutData.time}</Text>
-                                        </View>
-                                        <View className="flex-1 bg-white border-2 border-emerald-900 p-4 rounded-2xl">
-                                            <Text className="text-[10px] text-gray-400 font-bold mb-1">👣 이동 거리</Text>
-                                            <Text className="text-2xl font-black text-emerald-900">{workoutData.distance}<Text className="text-xs text-gray-400">km</Text></Text>
-                                        </View>
-                                    </View>
-                                    <View className="flex-row justify-between">
-                                        {[
-                                            { icon: <Mountain size={14} color="#3b82f6" />, label: '고도', value: `${extraMetrics.altitude}m` },
-                                            { icon: <Flame size={14} color="#f97316" />, label: '칼로리', value: `${extraMetrics.calories}kcal` },
-                                            { icon: <Heart size={14} color="#ef4444" />, label: '심박수', value: `${extraMetrics.heartRate}bpm` },
-                                            { icon: <MapPin size={14} color="#10b981" />, label: '남은거리', value: `${Math.max(0, (parseDistanceNumber(selectedTrail?.distance) - workoutData.distance)).toFixed(1)}km` },
-                                        ].map((item, i) => (
-                                            <View key={i} className="flex-1 bg-gray-50 p-2.5 rounded-xl border border-gray-100 items-center mx-1">
-                                                {item.icon}
-                                                <Text className="text-[9px] text-gray-400 font-bold mt-1">{item.label}</Text>
-                                                <Text className="text-xs font-bold text-gray-800 mt-0.5">{item.value}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                    <View className="flex-row gap-3 mt-2">
-                                        <TouchableOpacity onPress={togglePause} className={`flex-1 py-4 rounded-xl flex-row items-center justify-center gap-2 ${isPaused ? 'bg-amber-500' : 'bg-gray-100'}`} activeOpacity={0.8}>
-                                            {isPaused ? <><Play size={18} color="white" /><Text className="text-white font-bold">재시작</Text></> : <><Pause size={18} color="#6b7280" /><Text className="text-gray-500 font-bold">일시정지</Text></>}
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={stopNavigation} className="flex-[1.5] py-4 bg-red-500 rounded-xl items-center justify-center" activeOpacity={0.8}>
-                                            <Text className="text-white font-bold">운동 종료</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                </View>
+                {renderModalContent()}
             </Modal>
         </View>
     );
