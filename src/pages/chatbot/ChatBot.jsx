@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Modal, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, Modal, Platform, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { X, Send, Calendar, MapPin, Gauge, Copy, Edit3, ArrowRight, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -139,9 +139,10 @@ const ChatBot = ({ visible, onClose }) => {
     const [mountainList, setMountainList] = useState([]);
     const [openDropdown, setOpenDropdown] = useState(null);
 
-    const regions = ["전국", "서울", "경기", "강원", "충청", "경상", "전라", "제주"];
-    const levels = ["초보자", "중급자", "상급자"];
-    const SYSTEM_PROMPT = " (지정한 날짜와 지역 정보를 토대로 추천 산행 정보를 300자 이내로 설명해 줘.)";
+    const SYSTEM_PROMPT = ` (지정한 날짜와 지역, 난이도 정보를 토대로 산행을 추천해 줘. 답변은 반드시 아래와 같은 JSON 배열 규격으로만 작성하고 다른 설명은 일체 생략해 줘.
+    [
+      { "mountain": "산 이름", "course": "추천 코스명", "reason": "코스별 특징과 추천하는 이유 요약" }
+    ])`;
 
     const formatDate = (date) => {
         if (!date) return "날짜";
@@ -164,16 +165,16 @@ const ChatBot = ({ visible, onClose }) => {
     const closeAll = () => setOpenDropdown(null);
 
     useEffect(() => {
-        const fetchMountains = async () => {
-            try {
-                const response = await axios.get(`${API_BASE_URL}/api/mountains`);
-                setMountainList(response.data);
-            } catch (error) {
-                console.error("산 목록 로드 실패:", error);
-            }
-        };
-        fetchMountains();
-    }, []);
+            const fetchMountains = async () => {
+                try {
+                    const response = await axios.get(`${API_BASE_URL}/api/mountains`);
+                    setMountainList(response.data);
+                } catch (error) {
+                    console.error("산 목록 로드 실패:", error);
+                }
+            };
+            fetchMountains();
+        }, []);
 
     const findMatchedMountain = (text) => {
         if (!text || mountainList.length === 0) return null;
@@ -239,6 +240,50 @@ const ChatBot = ({ visible, onClose }) => {
 
     const handleCopy = async (text) => { await Clipboard.setStringAsync(text); Alert.alert("알림", "메시지가 복사되었습니다."); };
 
+    // 🔥 1. 해당 텍스트가 '표(Table)' 데이터인지 판별하는 헬퍼 함수
+    const isTableMessage = (text) => {
+        if (!text) return false;
+        return text.includes('[') && text.includes(']') && text.includes('"mountain"');
+    };
+
+    // 🔥 2. 폰트와 행간을 시원하게 키운 표 렌더링 함수
+    const renderBotContent = (rawText) => {
+        try {
+            const firstIdx = rawText.indexOf('[');
+            const lastIdx = rawText.lastIndexOf(']');
+
+            if (firstIdx !== -1 && lastIdx !== -1 && lastIdx > firstIdx) {
+                const cleanJson = rawText.substring(firstIdx, lastIdx + 1);
+                const tableList = JSON.parse(cleanJson.trim());
+
+                if (Array.isArray(tableList) && tableList.length > 0 && tableList[0].mountain) {
+                    return (
+                        <View className="w-full bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm my-1">
+                            {/* 표 헤더 (폰트 13px로 확대) */}
+                            <View className="flex-row bg-[#E8FBF0] p-3 border-b border-gray-200 items-center justify-between">
+                                <Text style={{ flex: 1 }} className="font-black text-[#2b8a4e] text-[13px] text-center px-0.5">추천 산</Text>
+                                <Text style={{ flex: 1.3 }} className="font-black text-[#2b8a4e] text-[13px] text-center px-0.5">추천 코스</Text>
+                                <Text style={{ flex: 2 }} className="font-black text-[#2b8a4e] text-[13px] text-center px-0.5">특징 및 추천 이유</Text>
+                            </View>
+
+                            {/* 표 본문 (폰트 12~13px 및 행간 확대) */}
+                            {tableList.map((row, idx) => (
+                                <View key={idx} className={`flex-row p-3 items-center justify-between ${idx !== tableList.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                                    <Text style={{ flex: 1 }} className="font-black text-gray-900 text-[13px] text-center px-0.5">{row.mountain}</Text>
+                                    <Text style={{ flex: 1.3 }} className="font-bold text-gray-800 text-xs text-center px-0.5">{row.course}</Text>
+                                    {/* ⚠️ 설명글 폰트를 text-xs(12px)로 올리고 행간(leading-5)을 주어 가독성을 대폭 끌어올렸습니다. */}
+                                    <Text style={{ flex: 2 }} className="text-gray-700 text-xs leading-5 px-0.5">{row.reason}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    );
+                }
+            }
+        } catch {}
+
+        return <Text className="text-[15px] font-medium leading-5 text-gray-700">{rawText}</Text>;
+    };
+
     const dateActive = !!selectedDate;
     const regionActive = selectedRegion !== "지역";
     const levelActive = selectedLevel !== "난이도";
@@ -273,71 +318,84 @@ const ChatBot = ({ visible, onClose }) => {
                             <Image source={neogulImg} className="w-10 h-10 rounded-xl" />
                             <View className="bg-white p-4 rounded-2xl border border-gray-100 max-w-[85%] shadow-sm">
                                 <Text className="text-lg font-bold text-gray-900 leading-6">안녕하세요! 저는 너굴 AI입니다. 🌲</Text>
-                                <Text className="text-sm text-gray-500 mt-2 leading-5">최적의 등산 코스와 날씨를 분석해 드릴게요.</Text>
+                                <Text className="text-sm text-gray-500 mt-2 leading-5">최적의 등산 코스와 날씨를 표로 분석해 드릴게요.</Text>
                             </View>
                         </View>
 
-                        {messages.map((msg, index) => (
-                            <View key={index} className={`mb-6 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                <View className={`flex-row items-end space-x-2 ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                                    {msg.role === 'bot' && <Image source={neogulImg} className="w-10 h-10 rounded-xl" />}
-                                    <View className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                        <View className={`p-4 rounded-2xl max-w-[280px] shadow-sm ${msg.role === 'user' ? 'bg-[#70E092]' : 'bg-white border border-gray-50'}`}>
-                                            {editingId === index ? (
-                                                <View>
-                                                    <TextInput value={editInputText} onChangeText={setEditInputText} className="bg-black/10 text-white p-2 rounded-lg mb-2" multiline autoFocus />
-                                                    <View className="flex-row justify-end space-x-2">
-                                                        <TouchableOpacity onPress={() => setEditingId(null)}><Text className="text-white/80 text-xs mt-1">취소</Text></TouchableOpacity>
-                                                        <TouchableOpacity onPress={() => handleUpdateMessage(index)} className="bg-white px-2 py-1 rounded-full"><Text className="text-[#70E092] font-bold text-xs">수정완료</Text></TouchableOpacity>
+                        {messages.map((msg, index) => {
+                            const isTable = msg.role === 'bot' && isTableMessage(msg.text);
+
+                            return (
+                                <View key={index} className={`mb-6 ${msg.role === 'user' ? 'items-end' : 'items-start w-full'}`}>
+                                    <View className={`flex-row items-end space-x-2 w-full ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse justify-start' : 'justify-start'}`}>
+
+                                        {/* 🔥 3. 일반 대화일 때만 너구리 프로필 출력 (표일 때는 숨김 처리) */}
+                                        {msg.role === 'bot' && !isTable && (
+                                            <Image source={neogulImg} className="w-10 h-10 rounded-xl" />
+                                        )}
+
+                                        {/* 🔥 4. 표일 때는 flex-1을 주어 남은 가로 영역 100%를 꽉 채우도록 확장 */}
+                                        <View className={`flex flex-col ${msg.role === 'user' ? 'items-end' : (isTable ? 'flex-1 items-stretch' : 'items-start')}`}>
+
+                                            {/* 🔥 5. 표일 때는 말풍선 껍데기(padding, background)를 투명하게 벗겨내어 이중 테두리 완벽 제거 */}
+                                            <View className={`rounded-2xl ${
+                                                msg.role === 'user'
+                                                    ? 'p-3.5 max-w-[280px] bg-[#70E092] shadow-sm'
+                                                    : (isTable ? 'p-0 w-full bg-transparent border-0' : 'p-3.5 bg-white border border-gray-100 shadow-sm max-w-[280px]')
+                                            }`}>
+                                                {editingId === index ? (
+                                                    <View>
+                                                        <TextInput value={editInputText} onChangeText={setEditInputText} className="bg-black/10 text-white p-2 rounded-lg mb-2" multiline autoFocus />
+                                                        <View className="flex-row justify-end space-x-2">
+                                                            <TouchableOpacity onPress={() => setEditingId(null)}><Text className="text-white/80 text-xs mt-1">취소</Text></TouchableOpacity>
+                                                            <TouchableOpacity onPress={() => handleUpdateMessage(index)} className="bg-white px-2 py-1 rounded-full"><Text className="text-[#70E092] font-bold text-xs">수정완료</Text></TouchableOpacity>
+                                                        </View>
                                                     </View>
+                                                ) : (
+                                                    msg.role === 'bot' ? renderBotContent(msg.text) : <Text className="text-[15px] font-medium leading-5 text-white">{msg.text}</Text>
+                                                )}
+                                            </View>
+
+                                            {msg.role === 'user' && editingId !== index && (
+                                                <View className="flex-row mt-1 space-x-2 mr-1">
+                                                    <TouchableOpacity onPress={() => handleCopy(msg.text)} className="p-1"><Copy size={14} color="#9ca3af" /></TouchableOpacity>
+                                                    <TouchableOpacity onPress={() => startEdit(index, msg.text)} className="p-1"><Edit3 size={14} color="#9ca3af" /></TouchableOpacity>
                                                 </View>
-                                            ) : (
-                                                <Text className={`text-[15px] font-medium leading-5 ${msg.role === 'user' ? 'text-white' : 'text-gray-700'}`}>{msg.text}</Text>
                                             )}
                                         </View>
-                                        {msg.role === 'user' && editingId !== index && (
-                                            <View className="flex-row mt-1 space-x-2 mr-1">
-                                                <TouchableOpacity onPress={() => handleCopy(msg.text)} className="p-1"><Copy size={14} color="#9ca3af" /></TouchableOpacity>
-                                                <TouchableOpacity onPress={() => startEdit(index, msg.text)} className="p-1"><Edit3 size={14} color="#9ca3af" /></TouchableOpacity>
-                                            </View>
-                                        )}
                                     </View>
-                                    <View className="flex-col items-end">
-                                        {msg.isEdited && <Text className="text-[9px] text-gray-400 mb-0.5">수정됨</Text>}
-                                        <Text className="text-[10px] text-gray-400 mb-1">{msg.time}</Text>
-                                    </View>
-                                </View>
 
-                                {msg.role === 'bot' && msg.relatedMountain && (
-                                    <TouchableOpacity
-                                        onPress={() => { onClose(); router.push(`/mountain/${msg.relatedMountain.id}`); }}
-                                        className="ml-12 mt-3 w-60 bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex-row items-center space-x-3"
-                                    >
-                                        <Image source={getSafeImageSource(msg.relatedMountain.imageUrl?.split(',')[0])} className="w-12 h-12 rounded-lg bg-gray-100" resizeMode="cover" />
-                                        <View className="flex-1">
-                                            <Text className="text-[10px] text-[#70E092] font-bold">추천 산행지</Text>
-                                            <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>{msg.relatedMountain.name}</Text>
-                                        </View>
-                                        <ArrowRight size={16} color="#70E092" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        ))}
+                                    {/* 🔥 6. 표 넓이에 맞춰 하단의 [추천 산행지 바로가기] 링크도 가운데 정렬되도록 스마트 배치 */}
+                                    {msg.role === 'bot' && msg.relatedMountain && (
+                                        <TouchableOpacity
+                                            onPress={() => { onClose(); router.push(`/mountain/${msg.relatedMountain.id}`); }}
+                                            className={`mt-3 bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex-row items-center space-x-3 ${
+                                                isTable ? 'self-center w-[90%]' : 'ml-12 w-60'
+                                            }`}
+                                        >
+                                            <Image source={getSafeImageSource(msg.relatedMountain.imageUrl?.split(',')[0])} className="w-12 h-12 rounded-lg bg-gray-100" resizeMode="cover" />
+                                            <View className="flex-1">
+                                                <Text className="text-[10px] text-[#70E092] font-bold">추천 산행지</Text>
+                                                <Text className="text-sm font-bold text-gray-800" numberOfLines={1}>{msg.relatedMountain.name}</Text>
+                                            </View>
+                                            <ArrowRight size={16} color="#70E092" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            );
+                        })}
 
                         {isLoading && (
                             <View className="flex-row items-center space-x-2 ml-12 mb-6">
                                 <ActivityIndicator size="small" color="#70E092" />
-                                <Text className="text-sm text-gray-400 font-medium">너굴 AI가 분석 중이에요...</Text>
+                                <Text className="text-sm text-gray-400 font-medium">너굴 AI가 추천 표를 만들고 있어요...</Text>
                             </View>
                         )}
                     </ScrollView>
 
-                    {/* 하단 입력바 */}
+                    {/* 하단 필터 및 입력바 */}
                     <View className="p-5 bg-white border-t border-gray-100 pb-10">
-
-                        {/* ── 드롭다운 필터 3개 (gap 적용 완료) ── */}
                         <View className="flex-row mb-4 gap-2">
-
                             <View className="relative">
                                 <TouchableOpacity
                                     onPress={() => toggleDropdown('date')}
