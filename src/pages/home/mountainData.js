@@ -33,7 +33,7 @@ export const MOUNTAIN_DATA = {
             ],
         },
         {
-            id: 12, name: "원효봉 코스", difficulty: "쉬움", uptime: "1시간 30분", distance: "2.7km",
+            id: 12, name: "북한산 원효봉 코스", difficulty: "쉬움", uptime: "1시간 30분", distance: "2.7km",
             description: "북한산 입문 코스로 추천하며, 원효봉 정상에서 바라보는 백운대와 만경대의 파노라마 뷰가 일품입니다.",
             imageSource: IMG_BUKHAN_C2,
             markers: [
@@ -61,7 +61,7 @@ export const MOUNTAIN_DATA = {
     ],
     "2": [
         {
-            id: 13, name: "울산바위 코스", difficulty: "보통", uptime: "2시간", distance: "3.8km",
+            id: 13, name: "설악산 울산바위 코스", difficulty: "보통", uptime: "2시간", distance: "3.8km",
             description: "설악산의 상징과도 같은 기암괴석 울산바위에 오르는 대표적인 코스입니다.",
             imageSource: IMG_SEORAK_ULSAN,
             markers: [
@@ -74,7 +74,7 @@ export const MOUNTAIN_DATA = {
     ],
     "3": [
         {
-            id: 15, name: "성판악 코스", difficulty: "어려움", uptime: "4시간 30분", distance: "9.6km",
+            id: 15, name: "한라산 성판악 코스", difficulty: "어려움", uptime: "4시간 30분", distance: "9.6km",
             description: "백록담 정상을 정복할 수 있는 가장 대중적인 코스로, 완만한 경사가 길게 이어집니다.",
             imageSource: IMG_HALLA_SEONGPANAK,
             markers: [
@@ -87,7 +87,7 @@ export const MOUNTAIN_DATA = {
     ],
     "4": [
         {
-            id: 17, name: "천왕봉 최단 코스 (중산리)", difficulty: "어려움", uptime: "5시간", distance: "10.4km",
+            id: 17, name: "지리산 천왕봉 최단 코스 (중산리)", difficulty: "어려움", uptime: "5시간", distance: "10.4km",
             description: "지리산 최고봉 천왕봉을 가장 빠르게 만날 수 있지만, 가파른 경사가 특징입니다.",
             imageSource: IMG_JIRI_CHEONWANG,
             markers: [
@@ -100,7 +100,7 @@ export const MOUNTAIN_DATA = {
     ],
     "5": [
         {
-            id: 19, name: "내장사 힐링 코스", difficulty: "쉬움", uptime: "1시간", distance: "3.0km",
+            id: 19, name: "내장산 내장사 힐링 코스", difficulty: "쉬움", uptime: "1시간", distance: "3.0km",
             description: "단풍 터널을 지나 내장사까지 평탄하게 걷는 가족형 힐링 코스입니다.",
             imageSource: IMG_NAEJANG_TEMPLE,
             markers: [

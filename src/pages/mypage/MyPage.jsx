@@ -6,7 +6,6 @@ import axios from 'axios';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sendMessage } from 'react-native-wear-connectivity';
 
-// 초(Seconds) 단위를 hh:mm:ss 포맷으로 변환해 주는 헬퍼 함수
 const formatTime = (totalSeconds) => {
     if (!totalSeconds) return "00:00:00";
     const hrs = Math.floor(totalSeconds / 3600);
@@ -15,11 +14,9 @@ const formatTime = (totalSeconds) => {
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 };
 
-// 🏔️ 등산 기록 카드 컴포넌트
 const HikingRecordCard = ({ record }) => (
     <View className="bg-white border border-gray-100 rounded-2xl p-4 mb-3 shadow-sm">
         <View className="flex-row gap-3">
-            {/* 왼쪽 지도 이미지 영역 (디자인 유지) */}
             <View className="w-[100px] h-[100px] rounded-xl bg-gray-100 overflow-hidden border border-gray-200">
                 {record.mapImage ? (
                     <Image source={{ uri: record.mapImage }} className="w-full h-full" />
@@ -29,8 +26,6 @@ const HikingRecordCard = ({ record }) => (
                     </View>
                 )}
             </View>
-
-            {/* 오른쪽 등산 요약 정보 피드 */}
             <View className="flex-1 justify-between">
                 <View className="flex-row justify-between items-start">
                     <Text className="text-base font-bold text-gray-900 flex-1 mr-2" numberOfLines={1}>
@@ -41,8 +36,6 @@ const HikingRecordCard = ({ record }) => (
                     </View>
                 </View>
                 <Text className="text-xs text-gray-400 mt-1">{record.date}</Text>
-
-                {/* 4분할 디테일 스탯 지표 */}
                 <View className="flex-row gap-1 mt-3">
                     <View className="flex-1 bg-gray-50 border border-gray-100 rounded-lg p-1.5 items-center justify-center">
                         <Clock size={12} color="#10B981" />
@@ -100,6 +93,11 @@ const PostCard = ({ post, onClick }) => (
     </TouchableOpacity>
 );
 
+const HIKING_RECORDS_LIMIT = 3;
+
+// ✅ 고정 산 목록 (6개)
+const FIXED_MOUNTAINS = ['북한산', '설악산', '지리산', '한라산', '내장산'];
+
 export default function MyPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
@@ -109,8 +107,10 @@ export default function MyPage() {
     const [selectedMountain, setSelectedMountain] = useState('ALL');
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [hikingRecords, setHikingRecords] = useState([]);
+    const [showAllHikingRecords, setShowAllHikingRecords] = useState(false);
 
-    const mountainList = ['ALL', ...new Set(hikingRecords.map(r => r.mountainName))];
+    // ✅ 고정 6개 산 목록 (ALL 포함)
+    const mountainList = ['ALL', ...FIXED_MOUNTAINS];
 
     const [user, setUser] = useState({
         name: "",
@@ -120,7 +120,6 @@ export default function MyPage() {
         stats: { point: 0, like: 0 },
     });
 
-    // 💡 기존 주소 유지
     const BACKEND_URL = "http://10.0.2.2:8082";
 
     const fetchUserInfo = async () => {
@@ -132,7 +131,6 @@ export default function MyPage() {
             }
             const headers = { Authorization: `Bearer ${token}` };
 
-            // 🌟 엔드포인트를 백엔드 컨트롤러에 정의된 주소(/api/health/workout-summary/my)로 정밀 수정!
             const [userRes, countRes, likeCountRes, postsRes, hikingRes] = await Promise.all([
                 axios.get(`${BACKEND_URL}/api/auth/me`, { headers }),
                 axios.get(`${BACKEND_URL}/api/posts/my/count`, { headers }),
@@ -151,11 +149,8 @@ export default function MyPage() {
                 comments: post.commentCount || 0
             }));
 
-            // 📊 백엔드 WorkoutSummary 엔티티 결과 매핑 및 필터 파싱
             const mappedHiking = (hikingRes.data || []).map((record, index) => {
                 let periodType = "ALL";
-
-                // 엔티티 자동 생성일 컬럼(createdAt) 기준 날짜 추출
                 const recordDateStr = record.createdAt || "";
 
                 if (recordDateStr) {
@@ -174,17 +169,13 @@ export default function MyPage() {
                     }
                 }
 
-                const formattedDate = recordDateStr
-                    ? recordDateStr.split('T')[0].replace(/-/g, '. ')
-                    : "등산 완료";
+                const formattedDate = recordDateStr ? recordDateStr.split('T')[0].replace(/-/g, '. ') : "등산 완료";
 
                 return {
                     id: record.id || index,
-                    // 백엔드 엔티티 필드인 trailName을 화면 UI 산 이름으로 매핑
                     mountainName: record.trailName || "이름 없는 코스",
                     courseName: "코스",
                     date: formattedDate,
-                    // 백엔드의 totalTimeSeconds 단위를 시분초로 변환
                     duration: formatTime(record.totalTimeSeconds),
                     distance: record.totalDistance !== undefined ? `${record.totalDistance.toFixed(1)}km` : "0.0km",
                     stat3Name: "칼로리",
@@ -228,11 +219,7 @@ export default function MyPage() {
                 onPress: async () => {
                     await AsyncStorage.removeItem("jwtToken");
                     router.replace('/');
-                    sendMessage(
-                        { path: '/clear_jwt_token', data: 'logout' },
-                        () => console.log("✅ 워치 토큰 삭제 완료"),
-                        (err) => console.error("❌ 워치 신호 전송 실패:", err)
-                    );
+                    sendMessage({ path: '/clear_jwt_token', data: 'logout' }, () => console.log("✅ 워치 토큰 삭제 완료"), (err) => console.error("❌ 워치 신호 전송 실패:", err));
                 }
             }
         ]);
@@ -240,11 +227,22 @@ export default function MyPage() {
 
     const filteredPosts = myPosts.filter(post => activeTab === 'ALL' || post.type === activeTab);
 
+    // ✅ 필터 로직: includes로 산 이름이 포함된 모든 코스 필터링
     const filteredHikingRecords = hikingRecords.filter(record => {
         const tabMatch = hikingTab === 'ALL' || record.period === hikingTab;
-        const mountainMatch = selectedMountain === 'ALL' || record.mountainName === selectedMountain;
+        const mountainMatch = selectedMountain === 'ALL' || record.mountainName.includes(selectedMountain);
         return tabMatch && mountainMatch;
     });
+
+    // ✅ 산 필터 변경 시 더보기 상태 초기화
+    const handleSelectMountain = (name) => {
+        setSelectedMountain(name);
+        setDropdownOpen(false);
+        setShowAllHikingRecords(false);
+    };
+
+    const visibleHikingRecords = showAllHikingRecords ? filteredHikingRecords : filteredHikingRecords.slice(0, HIKING_RECORDS_LIMIT);
+    const hasMoreHikingRecords = filteredHikingRecords.length > HIKING_RECORDS_LIMIT;
 
     if (loading) return (
         <View className="flex-1 justify-center items-center bg-white">
@@ -259,7 +257,6 @@ export default function MyPage() {
             </View>
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-                {/* 사용자 프로필 섹션 */}
                 <View className="px-5 py-6 flex-row items-center justify-between">
                     <View className="flex-row items-center gap-4">
                         <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center overflow-hidden border border-gray-200">
@@ -274,16 +271,12 @@ export default function MyPage() {
                             <Text className="text-xs text-gray-500">{user.email || "이메일 정보 없음"}</Text>
                         </View>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => router.push('/mypage/profile')}
-                        className="flex-row items-center px-3 py-2 border border-gray-200 rounded-full"
-                    >
+                    <TouchableOpacity onPress={() => router.push('/mypage/profile')} className="flex-row items-center px-3 py-2 border border-gray-200 rounded-full">
                         <Text className="text-xs text-gray-600 mr-1">수정</Text>
                         <ChevronRight size={14} color="#9CA3AF" />
                     </TouchableOpacity>
                 </View>
 
-                {/* 통계 스코어보드 */}
                 <View className="flex-row px-5 gap-3 mb-6">
                     <View className="flex-1 bg-gray-50 p-4 rounded-2xl flex-row justify-between items-center">
                         <View>
@@ -303,11 +296,9 @@ export default function MyPage() {
 
                 <View className="h-2 bg-gray-50 mb-6" />
 
-                {/* 나의 등산 기록 섹션 */}
                 <View className="px-5 mb-4">
                     <Text className="text-lg font-bold text-gray-900 mb-4">나의 등산 기록</Text>
 
-                    {/* 등산 기록 탭 필터 */}
                     <View className="flex-row justify-between items-center mb-4">
                         <View className="flex-row gap-2">
                             {[
@@ -327,7 +318,6 @@ export default function MyPage() {
                             ))}
                         </View>
 
-                        {/* 드롭다운 버튼 */}
                         <View style={{ position: 'relative' }}>
                             <TouchableOpacity
                                 onPress={() => setDropdownOpen(!dropdownOpen)}
@@ -340,29 +330,47 @@ export default function MyPage() {
                             </TouchableOpacity>
 
                             {dropdownOpen && (
-                                <View className="absolute right-0 top-9 bg-white border border-gray-200 rounded-xl shadow-md z-50 w-32 overflow-hidden">
-                                    {mountainList.map((name) => (
-                                        <TouchableOpacity
-                                            key={name}
-                                            onPress={() => { setSelectedMountain(name); setDropdownOpen(false); }}
-                                            className={`px-4 py-3 border-b border-gray-100 flex-row justify-between items-center ${selectedMountain === name ? 'bg-gray-50' : 'bg-white'}`}
-                                        >
-                                            <Text className={`text-xs ${selectedMountain === name ? 'text-emerald-600 font-bold' : 'text-gray-700'}`}>
-                                                {name === 'ALL' ? '전체 산' : name}
-                                            </Text>
-                                            {selectedMountain === name && <Text className="text-emerald-500 text-xs">✓</Text>}
-                                        </TouchableOpacity>
-                                    ))}
+                                <View className="absolute right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg z-50 w-32 overflow-hidden">
+                                    <ScrollView style={{ maxHeight: 200 }}>
+                                        {mountainList.map((name) => (
+                                            <TouchableOpacity
+                                                key={name}
+                                                onPress={() => handleSelectMountain(name)}
+                                                className={`px-4 py-3 border-b border-gray-100 ${selectedMountain === name ? 'bg-emerald-50' : 'bg-white'}`}
+                                            >
+                                                <Text className={`text-xs ${selectedMountain === name ? 'text-emerald-700 font-bold' : 'text-gray-700'}`}>
+                                                    {name === 'ALL' ? '전체 산' : name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
                                 </View>
                             )}
                         </View>
                     </View>
 
-                    {/* 등산 기록 리스트 렌더링 */}
-                    {filteredHikingRecords.length > 0 ? (
-                        filteredHikingRecords.map((record) => (
-                            <HikingRecordCard key={record.id} record={record} />
-                        ))
+                    {visibleHikingRecords.length > 0 ? (
+                        <>
+                            {visibleHikingRecords.map((record) => (
+                                <HikingRecordCard key={record.id} record={record} />
+                            ))}
+
+                            {hasMoreHikingRecords && (
+                                <TouchableOpacity
+                                    onPress={() => setShowAllHikingRecords(prev => !prev)}
+                                    className="w-full py-3 mt-1 mb-2 bg-gray-50 border border-gray-200 rounded-2xl items-center flex-row justify-center gap-1"
+                                >
+                                    <Text className="text-xs font-bold text-gray-500">
+                                        {showAllHikingRecords
+                                            ? '접기'
+                                            : `더보기 (${filteredHikingRecords.length - HIKING_RECORDS_LIMIT}개 더)`}
+                                    </Text>
+                                    <Text className="text-[10px] text-gray-400">
+                                        {showAllHikingRecords ? '▲' : '▼'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </>
                     ) : (
                         <View className="items-center justify-center py-10 bg-gray-50 rounded-2xl">
                             <Text className="text-gray-400 text-sm">기록된 등산 내역이 없습니다.</Text>
@@ -372,7 +380,6 @@ export default function MyPage() {
 
                 <View className="h-2 bg-gray-50 my-6" />
 
-                {/* 내 활동 내역 섹션 */}
                 <View className="px-5 mb-4">
                     <Text className="text-lg font-bold text-gray-900 mb-4">내 활동 내역</Text>
                     <View className="flex-row gap-2">
@@ -390,7 +397,6 @@ export default function MyPage() {
                     </View>
                 </View>
 
-                {/* 게시글 리스트 */}
                 <View className="px-5 pb-10">
                     {filteredPosts.length > 0 ? (
                         filteredPosts.map((post) => (
@@ -404,7 +410,6 @@ export default function MyPage() {
                     )}
                 </View>
 
-                {/* 하단 시스템 메뉴 */}
                 <View className="px-5 mb-10 gap-3">
                     <TouchableOpacity onPress={handleLogout} className="w-full py-4 bg-white border border-gray-200 rounded-2xl items-center">
                         <Text className="font-bold text-gray-700">로그아웃</Text>
