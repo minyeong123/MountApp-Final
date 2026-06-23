@@ -7,6 +7,9 @@ export const IMG_SEORAK_ULSAN = require("../../../assets/images/seorak.jpg");
 export const IMG_HALLA_SEONGPANAK = require("../../../assets/images/bukhan_c1.jpg");
 export const IMG_JIRI_CHEONWANG = require("../../../assets/images/bukhan_c1.jpg");
 export const IMG_NAEJANG_TEMPLE = require("../../../assets/images/bukhan_c1.jpg");
+export const a1 = require("../../../assets/images/a1.jpg");
+export const a2 = require("../../../assets/images/a2.jpeg");
+export const a3 = require("../../../assets/images/a3.jpeg");
 
 // 🌲 산 코스 데이터
 export const MOUNTAIN_DATA = {
@@ -76,7 +79,7 @@ export const MOUNTAIN_DATA = {
         {
             id: 15, name: "한라산 성판악 코스", difficulty: "어려움", uptime: "4시간 30분", distance: "9.6km",
             description: "백록담 정상을 정복할 수 있는 가장 대중적인 코스로, 완만한 경사가 길게 이어집니다.",
-            imageSource: IMG_HALLA_SEONGPANAK,
+            imageSource: a1,
             markers: [
                 { id: 1, lat: 33.3842, lng: 126.6212, color: "#84a98c", title: "성판악 입구" },
                 { id: 2, lat: 33.3768, lng: 126.5684, color: "#84a98c", title: "진달래밭 대피소" },
@@ -89,7 +92,7 @@ export const MOUNTAIN_DATA = {
         {
             id: 17, name: "지리산 천왕봉 최단 코스 (중산리)", difficulty: "어려움", uptime: "5시간", distance: "10.4km",
             description: "지리산 최고봉 천왕봉을 가장 빠르게 만날 수 있지만, 가파른 경사가 특징입니다.",
-            imageSource: IMG_JIRI_CHEONWANG,
+            imageSource: a2,
             markers: [
                 { id: 1, lat: 35.3121, lng: 127.7552, color: "#84a98c", title: "중산리 탐방지원센터" },
                 { id: 2, lat: 35.3289, lng: 127.7421, color: "#84a98c", title: "로타리 대피소" },
@@ -102,7 +105,7 @@ export const MOUNTAIN_DATA = {
         {
             id: 19, name: "내장산 내장사 힐링 코스", difficulty: "쉬움", uptime: "1시간", distance: "3.0km",
             description: "단풍 터널을 지나 내장사까지 평탄하게 걷는 가족형 힐링 코스입니다.",
-            imageSource: IMG_NAEJANG_TEMPLE,
+            imageSource: a3,
             markers: [
                 { id: 1, lat: 35.4922, lng: 126.8831, color: "#84a98c", title: "내장산 매표소" },
                 { id: 2, lat: 35.4955, lng: 126.8885, color: "#9381ff", title: "내장사" }

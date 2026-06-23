@@ -43,7 +43,7 @@ const NeogulGuide = ({ onOpen }) => {
                             bottom: 65,
                             right: 45,
                             backgroundColor: "#E8F8E8",
-                            width: 100,
+                            width: 120,
                             minHeight: 55,
                             justifyContent: "center",
                             alignItems: "center",

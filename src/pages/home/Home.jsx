@@ -38,22 +38,6 @@ export default function Home() {
         return { uri: `${API_BASE_URL}/uploads/${filename}` };
     };
 
-    const extractXmlData = (xml, itemTag) => {
-        const items = [];
-        const itemRegex = new RegExp(`<${itemTag}>(.*?)</${itemTag}>`, 'gs');
-        let match;
-        while ((match = itemRegex.exec(xml)) !== null) {
-            items.push(match[1]);
-        }
-        return items;
-    };
-
-    const getTagValue = (itemXml, tag) => {
-        const regex = new RegExp(`<${tag}>(.*?)</${tag}>`);
-        const match = itemXml.match(regex);
-        return match ? match[1] : null;
-    };
-
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -64,48 +48,19 @@ export default function Home() {
                 });
                 setMountains(mountRes.data);
 
-                const fireUrl = `https://apis.data.go.kr/1400000/ForestStusService/getForestStusInfo?serviceKey=${ENCODING_KEY}&numOfRows=5&pageNo=1`;
-                const landUrl = `https://apis.data.go.kr/1400000/ForestLandslideService/getLandslideInfo?serviceKey=${ENCODING_KEY}&numOfRows=5&pageNo=1`;
-
-                const [fireRes, landRes] = await Promise.all([
-                    axios.get(fireUrl),
-                    axios.get(landUrl)
-                ]);
-
-                const newAlerts = [];
-
-                const fireItems = extractXmlData(fireRes.data, "item");
-                fireItems.forEach((item, i) => {
-                    const loc = getTagValue(item, "locNm") || "위치 미상";
-                    const time = getTagValue(item, "stDate") || "시간 미상";
-                    newAlerts.push({ id: `fire-${i}`, type: "FIRE", message: `${loc} 인근 산불 발생`, time: time });
-                });
-
-                const landItems = extractXmlData(landRes.data, "item");
-                landItems.forEach((item, i) => {
-                    const area = getTagValue(item, "areaName") || "지역 미상";
-                    const time = getTagValue(item, "createTime") || "";
-                    const level = getTagValue(item, "step") || "주의보";
-                    newAlerts.push({ id: `land-${i}`, type: "LANDSLIDE", message: `${area} 산사태 ${level} 발령`, time: time });
-                });
-
-                newAlerts.push(
-                    { id: "test-fire", type: "FIRE", message: "[테스트] 설악산 인근 대형 산불 발생", time: "현재" },
-                    { id: "test-land", type: "LANDSLIDE", message: "[테스트] 강원도 평창군 산사태 경보", time: "현재" }
-                );
-
-                if (newAlerts.length === 0) {
-                    setDisasterAlerts([{ id: 999, type: "INFO", message: "현재 발효된 특보가 없습니다.", time: new Date().toLocaleTimeString() }]);
-                } else {
-                    setDisasterAlerts(newAlerts);
-                }
-
             } catch (error) {
-                console.log("공공데이터 로딩 실패(무시됨):", error.message);
-                setDisasterAlerts([{ id: 0, type: "INFO", message: "재난 정보를 불러오지 못했습니다.", time: "" }]);
-            } finally {
-                setLoading(false);
+                console.log("산 정보 로딩 실패:", error.message);
             }
+
+            const mockAlerts = [
+                { id: "fire-1", type: "FIRE", message: "설악산 인근 대형 산불 발생", time: "14:32" },
+                { id: "fire-2", type: "FIRE", message: "지리산 남부 능선 산불 주의보", time: "13:10" },
+                { id: "land-1", type: "LANDSLIDE", message: "강원도 평창군 산사태 경보 발령", time: "12:55" },
+                { id: "land-2", type: "LANDSLIDE", message: "전남 구례군 산사태 주의보", time: "11:20" },
+                { id: "info-1", type: "INFO", message: "북한산 일부 탐방로 통제 중", time: "09:00" },
+            ];
+            setDisasterAlerts(mockAlerts);
+            setLoading(false);
         };
 
         fetchData();
